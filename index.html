@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>地球Online · NPC身份诊断</title>
+<style>
+  :root{
+    --bg:#06090f;
+    --panel:#0c1320;
+    --panel2:#0e1728;
+    --line:#1c2a3d;
+    --cyan:#22d3ee;
+    --gold:#fbbf24;
+    --purple:#a78bfa;
+    --red:#f87171;
+    --green:#4ade80;
+    --orange:#fb923c;
+    --text:#dce8f5;
+    --dim:#6b7f99;
+    --mono:"Cascadia Code","JetBrains Mono",Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{-webkit-tap-highlight-color:transparent;}
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;overflow-x:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(ellipse 60% 40% at 50% -10%, rgba(34,211,238,.10), transparent 60%),
+      radial-gradient(ellipse 40% 30% at 90% 110%, rgba(167,139,250,.08), transparent 60%),
+      radial-gradient(ellipse 40% 30% at 5% 100%, rgba(251,191,36,.05), transparent 60%);
+  }
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.35;
+    background:repeating-linear-gradient(0deg, transparent 0 3px, rgba(0,0,0,.12) 3px 4px);
+  }
+  .wrap{position:relative;z-index:2;max-width:720px;margin:0 auto;padding:24px 16px 64px;}
+
+  .hidden{display:none !important;}
+  .sysmsg{
+    font-family:var(--mono);font-size:12px;color:var(--cyan);
+    border-left:2px solid var(--cyan);background:rgba(34,211,238,.06);
+    padding:8px 12px;letter-spacing:.5px;margin-bottom:18px;line-height:1.8;
+  }
+  .btn{
+    display:inline-block;cursor:pointer;user-select:none;
+    font-family:var(--mono);font-size:15px;letter-spacing:2px;
+    color:var(--cyan);background:rgba(34,211,238,.08);
+    border:1px solid rgba(34,211,238,.55);
+    padding:14px 38px;position:relative;
+    transition:all .18s ease;
+    clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);
+  }
+  .btn:hover{background:rgba(34,211,238,.18);box-shadow:0 0 22px rgba(34,211,238,.35);color:#fff;}
+  .btn.gold{color:var(--gold);border-color:rgba(251,191,36,.55);background:rgba(251,191,36,.08);}
+  .btn.gold:hover{background:rgba(251,191,36,.18);box-shadow:0 0 22px rgba(251,191,36,.3);}
+  .btn.small{padding:9px 20px;font-size:13px;}
+
+  /* ---------- 开始页 ---------- */
+  #screen-start{text-align:center;padding-top:8vh;animation:fadein .6s ease;}
+  .logo-mini{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:6px;margin-bottom:26px;}
+  .big-title{
+    font-size:clamp(44px,10vw,76px);font-weight:900;letter-spacing:4px;line-height:1.1;
+    color:#fff;text-shadow:0 0 30px rgba(34,211,238,.55),0 0 80px rgba(34,211,238,.25);
+  }
+  .big-title .on{color:var(--cyan);}
+  .sub-title{margin-top:16px;font-family:var(--mono);font-size:clamp(14px,3.5vw,18px);color:var(--gold);letter-spacing:8px;}
+  .glitch-tag{margin-top:30px;font-family:var(--mono);font-size:12px;color:var(--dim);line-height:2;}
+  .glitch-tag b{color:var(--cyan);font-weight:400;}
+  .stat-chips{display:flex;justify-content:center;gap:10px;margin:34px 0;flex-wrap:wrap;}
+  .chip{font-family:var(--mono);font-size:12px;color:var(--text);border:1px solid var(--line);background:var(--panel);padding:8px 16px;letter-spacing:1px;}
+  .chip b{color:var(--gold);font-weight:700;}
+  .start-hint{font-size:13px;color:var(--dim);margin-top:18px;line-height:1.9;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+  .cursor{animation:blink 1s step-end infinite;color:var(--cyan);}
+
+  /* ---------- 答题页 ---------- */
+  #screen-quiz{animation:fadein .4s ease;}
+  .quiz-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:1px;}
+  .quiz-top .qn{color:var(--cyan);}
+  .hpbar{height:8px;background:#0a101c;border:1px solid var(--line);position:relative;margin-bottom:28px;}
+  .hpbar .fill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--purple));box-shadow:0 0 12px rgba(34,211,238,.7);transition:width .35s ease;}
+  .qcard{animation:slidein .35s ease;}
+  .qtag{font-family:var(--mono);font-size:12px;color:var(--gold);letter-spacing:3px;margin-bottom:14px;}
+  .qtext{font-size:clamp(18px,4.6vw,22px);font-weight:700;line-height:1.7;color:#fff;margin-bottom:8px;}
+  .qsub{font-size:12.5px;color:var(--dim);margin-bottom:24px;line-height:1.8;font-style:italic;}
+  .opts{display:flex;flex-direction:column;gap:12px;}
+  .opt{
+    display:flex;align-items:flex-start;gap:14px;cursor:pointer;user-select:none;width:100%;
+    background:var(--panel);border:1px solid var(--line);
+    padding:15px 16px;text-align:left;font-size:15px;line-height:1.65;color:var(--text);
+    transition:all .15s ease;font-family:inherit;
+  }
+  .opt:hover{border-color:rgba(34,211,238,.6);background:var(--panel2);transform:translateX(4px);}
+  .opt .key{flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;color:var(--dim);border:1px solid var(--line);margin-top:1px;transition:all .15s ease;}
+  .opt:hover .key{color:var(--cyan);border-color:var(--cyan);}
+  .opt.selected{border-color:var(--cyan);background:rgba(34,211,238,.1);box-shadow:0 0 18px rgba(34,211,238,.25);}
+  .opt.selected .key{background:var(--cyan);color:#031018;border-color:var(--cyan);}
+  .quiz-foot{margin-top:26px;display:flex;justify-content:space-between;align-items:center;}
+  .btn-back{font-family:var(--mono);font-size:12px;color:var(--dim);background:none;border:none;cursor:pointer;letter-spacing:1px;padding:8px 0;}
+  .btn-back:hover{color:var(--cyan);}
+  .btn-back:disabled{opacity:.25;cursor:default;}
+  .kbd-hint{font-family:var(--mono);font-size:11px;color:#3a4a61;}
+  @keyframes fadein{from{opacity:0}to{opacity:1}}
+  @keyframes slidein{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+  /* ---------- 分析页 ---------- */
+  #screen-loading{padding-top:16vh;animation:fadein .4s ease;}
+  .terminal{max-width:480px;margin:0 auto;font-family:var(--mono);font-size:13px;line-height:2.2;background:rgba(6,10,18,.9);border:1px solid var(--line);padding:24px 22px;color:var(--green);}
+  .terminal .tline{opacity:0;transform:translateY(4px);transition:all .3s ease;}
+  .terminal .tline.show{opacity:1;transform:none;}
+  .terminal .caret{display:inline-block;width:8px;height:14px;background:var(--green);vertical-align:-2px;animation:blink .8s step-end infinite;}
+
+  /* ---------- 结果页 · 攻略结构 ---------- */
+  #screen-result{animation:fadein .5s ease;}
+  .panel{
+    background:var(--panel);border:1px solid var(--line);
+    padding:26px 22px;margin-bottom:0;position:relative;
+    clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px);
+  }
+  .sec{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+  .sec .pixicon{flex:none;line-height:0;}
+  .sec .no{font-family:var(--mono);font-size:11px;color:var(--gold);letter-spacing:2px;line-height:1.6;}
+  .sec h2{font-size:19px;font-weight:800;color:#fff;letter-spacing:1px;}
+  .sec .sub{font-family:var(--mono);font-size:11px;color:var(--dim);margin-left:auto;}
+
+  /* 板块间过渡桥 */
+  .bridge{text-align:center;padding:18px 12px;font-family:var(--mono);font-size:12px;color:var(--dim);line-height:1.9;animation:fadein .6s ease;}
+  .bridge .arr{display:block;color:var(--cyan);font-size:15px;margin-bottom:4px;letter-spacing:4px;animation:blink 1.6s step-end infinite;}
+  .bridge em{font-style:normal;color:var(--cyan);}
+
+  /* 系统邮件开场 */
+  .mail{border-color:rgba(34,211,238,.35);}
+  .mail-head{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:1px;border-bottom:1px dashed var(--line);padding-bottom:12px;margin-bottom:14px;line-height:1.8;flex-wrap:wrap;gap:6px;}
+  .mail-body{font-size:14.5px;line-height:2.1;color:#c6d5e6;}
+  .mail-body b{color:var(--cyan);font-weight:700;}
+
+  /* 像素图 */
+  .pixel svg{image-rendering:pixelated;display:block;}
+  .avatar-stage{text-align:center;padding:6px 0 20px;}
+  .avatar-stage .pixel{display:inline-block;filter:drop-shadow(0 4px 14px rgba(0,0,0,.6));}
+  .avatar-name-tag{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:2px;margin-top:12px;}
+
+  .diag-card{text-align:center;border-color:rgba(251,191,36,.4);background:linear-gradient(180deg,rgba(251,191,36,.05),var(--panel));}
+  .diag-tag{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:4px;margin-bottom:14px;}
+  .arch-name{font-size:clamp(30px,7vw,42px);font-weight:900;color:var(--gold);letter-spacing:3px;text-shadow:0 0 30px rgba(251,191,36,.4);margin-bottom:14px;}
+  .arch-desc{font-size:15px;line-height:1.9;color:var(--text);max-width:480px;margin:0 auto 18px;}
+  .arch-line{font-family:var(--mono);font-size:13px;color:var(--cyan);letter-spacing:1px;border:1px dashed rgba(34,211,238,.4);padding:10px 18px;display:inline-block;margin-bottom:22px;}
+  .level-badge{display:inline-block;font-family:var(--mono);font-size:13px;letter-spacing:3px;padding:10px 26px;border:1px solid;}
+  .level-0{color:var(--red);border-color:var(--red);background:rgba(248,113,113,.08);}
+  .level-1{color:var(--orange);border-color:var(--orange);background:rgba(251,146,60,.08);}
+  .level-2{color:var(--cyan);border-color:var(--cyan);background:rgba(34,211,238,.08);}
+  .level-3{color:var(--green);border-color:var(--green);background:rgba(74,222,128,.08);}
+  .awaken-line{font-family:var(--mono);font-size:12px;color:var(--dim);margin-top:14px;letter-spacing:1px;}
+  .mixed-note{margin-top:18px;font-size:13px;color:var(--purple);line-height:1.8;border-left:2px solid var(--purple);padding-left:12px;text-align:left;}
+  .hope-box{margin-top:22px;text-align:left;border:1px solid rgba(74,222,128,.3);background:rgba(74,222,128,.05);padding:16px 18px;}
+  .hope-box .hb-t{font-family:var(--mono);font-size:12px;color:var(--green);letter-spacing:2px;margin-bottom:10px;}
+  .hope-box p{font-size:14px;line-height:2;color:#c3d6c8;}
+  .hope-box p b{color:var(--green);}
+
+  .radar-box{display:flex;justify-content:center;}
+  .radar-box svg{width:100%;max-width:420px;height:auto;}
+  .dim-bars{margin-top:24px;display:flex;flex-direction:column;gap:14px;}
+  .drow .drow-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;}
+  .drow .dname{font-weight:700;letter-spacing:1px;}
+  .drow .dval{font-family:var(--mono);}
+  .dbar{height:6px;background:#0a101c;border:1px solid var(--line);}
+  .dbar .fill{height:100%;width:0;transition:width 1s cubic-bezier(.2,.8,.2,1);}
+  .drow .dtrait{font-size:12px;color:var(--dim);margin-top:6px;line-height:1.7;}
+
+  .deep-text{font-size:14.5px;line-height:2.05;color:#b8c8da;}
+  .deep-text b{color:var(--gold);font-weight:700;}
+
+  /* 症状实录：可交互 */
+  ul.gamelist{list-style:none;display:flex;flex-direction:column;gap:12px;}
+  ul.gamelist li{
+    position:relative;padding:12px 14px 12px 44px;font-size:14.5px;line-height:1.85;
+    background:var(--panel2);border:1px solid var(--line);cursor:pointer;transition:all .15s ease;
+  }
+  ul.gamelist li:hover{border-color:rgba(248,113,113,.5);}
+  ul.gamelist li::before{content:"□";position:absolute;left:14px;top:12px;font-family:var(--mono);font-size:14px;color:var(--dim);}
+  ul.gamelist li.hit{border-color:var(--red);background:rgba(248,113,113,.08);}
+  ul.gamelist li.hit::before{content:"✕";color:var(--red);font-weight:700;}
+  .hit-counter{font-family:var(--mono);font-size:12px;color:var(--dim);margin-top:16px;letter-spacing:1px;text-align:right;}
+  .hit-counter b{color:var(--red);font-size:15px;}
+
+  /* 新手任务链 */
+  .action-list{display:flex;flex-direction:column;gap:14px;}
+  .action{
+    display:flex;gap:14px;align-items:flex-start;
+    background:var(--panel2);border:1px solid rgba(74,222,128,.25);padding:16px;cursor:pointer;transition:all .15s ease;
+  }
+  .action:hover{border-color:rgba(74,222,128,.6);}
+  .action .an{flex:none;font-family:var(--mono);font-size:11px;color:var(--green);border:1px solid rgba(74,222,128,.5);padding:4px 8px;margin-top:2px;letter-spacing:1px;}
+  .action .at{font-size:14.5px;line-height:1.85;}
+  .action.done{opacity:.55;}
+  .action.done .at{text-decoration:line-through;text-decoration-color:rgba(74,222,128,.7);}
+
+  .roadmap{display:flex;flex-direction:column;}
+  .rm-stage{position:relative;padding:0 0 26px 30px;border-left:1px solid var(--line);margin-left:8px;}
+  .rm-stage:last-child{padding-bottom:0;}
+  .rm-stage::before{content:"";position:absolute;left:-6px;top:4px;width:11px;height:11px;background:var(--bg);border:2px solid var(--cyan);transform:rotate(45deg);}
+  .rm-stage.gold::before{border-color:var(--gold);}
+  .rm-stage.purple::before{border-color:var(--purple);}
+  .rm-stage .rm-t{font-family:var(--mono);font-size:12px;color:var(--cyan);letter-spacing:2px;margin-bottom:8px;}
+  .rm-stage.gold .rm-t{color:var(--gold);}
+  .rm-stage.purple .rm-t{color:var(--purple);}
+  .rm-stage .rm-d{font-size:14.5px;line-height:1.9;}
+
+  /* BOSS 战 */
+  .boss-box{border:1px solid rgba(248,113,113,.35);background:rgba(248,113,113,.05);padding:20px;}
+  .boss-head{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap;}
+  .boss-head .bn{font-size:17px;font-weight:800;color:var(--red);letter-spacing:1px;}
+  .boss-head .btag{font-family:var(--mono);font-size:10px;color:var(--red);border:1px solid rgba(248,113,113,.4);padding:3px 8px;letter-spacing:2px;}
+  .boss-box p{font-size:14.5px;line-height:2;color:#c4b8c4;}
+  .boss-box p b{color:var(--red);}
+  .boss-box .weakness{margin-top:14px;font-family:var(--mono);font-size:12px;color:var(--gold);border-top:1px dashed rgba(248,113,113,.3);padding-top:12px;line-height:1.9;}
+
+  .team-box{border:1px solid rgba(167,139,250,.35);background:rgba(167,139,250,.05);padding:20px;display:flex;gap:18px;align-items:flex-start;}
+  .team-box .tm-name{font-size:16px;font-weight:800;color:var(--purple);margin-bottom:12px;letter-spacing:1px;}
+  .team-box p{font-size:14.5px;line-height:2;color:#c3cad9;}
+  .team-box p b{color:var(--purple);}
+
+  .next-box{text-align:center;border-color:rgba(251,191,36,.4);}
+  .next-box p{font-size:14.5px;line-height:2;color:#c9d6e5;margin-bottom:18px;}
+  .next-box p b{color:var(--gold);}
+
+  /* 终章 · 觉醒宣言 */
+  .final-card{text-align:center;border-color:rgba(34,211,238,.45);background:linear-gradient(180deg,rgba(34,211,238,.06),var(--panel));position:relative;overflow:hidden;}
+  .final-tag{font-family:var(--mono);font-size:12px;color:var(--cyan);letter-spacing:6px;margin-bottom:18px;}
+  .final-title{font-size:clamp(26px,6vw,34px);font-weight:900;color:#fff;letter-spacing:6px;margin-bottom:20px;text-shadow:0 0 26px rgba(34,211,238,.5);}
+  .final-text{font-size:14.5px;line-height:2.2;color:#c6d5e6;max-width:520px;margin:0 auto 22px;}
+  .final-text b{color:var(--cyan);}
+  .declare{
+    font-size:15.5px;line-height:2.3;color:#e8f2fb;max-width:520px;margin:0 auto 26px;
+    border:1px dashed rgba(34,211,238,.4);padding:22px 20px;position:relative;background:rgba(34,211,238,.04);
+  }
+  .declare .sig{display:block;margin-top:14px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--cyan);letter-spacing:1px;}
+  .stamp-zone{position:relative;display:inline-block;min-height:96px;}
+  .seal{
+    position:absolute;right:-70px;top:-6px;width:86px;height:86px;border-radius:50%;
+    border:3px solid #e05252;color:#e05252;
+    display:flex;align-items:center;justify-content:center;flex-direction:column;
+    font-family:var(--mono);font-weight:900;font-size:22px;letter-spacing:3px;
+    transform:rotate(-14deg) scale(3);opacity:0;
+  }
+  .seal small{font-size:9px;letter-spacing:2px;font-weight:400;margin-top:2px;}
+  .seal.stamped{animation:stampIn .35s cubic-bezier(.2,2,.4,1) forwards;}
+  @keyframes stampIn{
+    0%{transform:rotate(-14deg) scale(3);opacity:0;}
+    100%{transform:rotate(-14deg) scale(1);opacity:.92;}
+  }
+  .final-stats{display:flex;justify-content:center;gap:26px;margin:24px 0 8px;flex-wrap:wrap;}
+  .fstat{font-family:var(--mono);font-size:11px;color:var(--dim);line-height:2;letter-spacing:1px;}
+  .fstat b{display:block;font-size:20px;color:var(--cyan);font-weight:700;}
+
+  .result-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:30px;}
+
+  #toast{
+    position:fixed;left:50%;bottom:36px;transform:translateX(-50%) translateY(80px);
+    background:var(--panel2);border:1px solid var(--cyan);color:var(--cyan);
+    font-family:var(--mono);font-size:13px;padding:12px 24px;z-index:99;
+    transition:transform .3s ease;box-shadow:0 0 24px rgba(34,211,238,.3);letter-spacing:1px;max-width:86vw;text-align:center;
+  }
+  #toast.show{transform:translateX(-50%) translateY(0);}
+
+  footer{margin-top:40px;text-align:center;font-family:var(--mono);font-size:11px;color:#33425a;letter-spacing:1px;line-height:2;}
+
+  @media(max-width:480px){
+    .panel{padding:22px 16px;}
+    .sec .sub{display:none;}
+    .seal{right:-46px;width:70px;height:70px;font-size:17px;}
+    .team-box{flex-direction:column;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ 开始页 ============ -->
+  <section id="screen-start">
+    <div class="logo-mini">EARTH ONLINE · SYSTEM BOOT</div>
+    <h1 class="big-title">地球<span class="on">Online</span></h1>
+    <div class="sub-title">NPC 身份诊断</div>
+    <div class="glitch-tag">
+      &gt; 你是在玩地球Online，还是被地球Online玩？<br>
+      &gt; <b>36</b> 道题，测出你被什么困在了NPC身份里<span class="cursor">_</span>
+    </div>
+    <div class="stat-chips">
+      <span class="chip"><b>36</b> 道场景题</span>
+      <span class="chip"><b>5</b> 维属性面板</span>
+      <span class="chip"><b>8</b> 种NPC原型</span>
+    </div>
+    <button class="btn" id="btn-start">▶ 进入诊断</button>
+    <p class="start-hint">约需 5 分钟 · 请凭第一直觉作答，不要思考「正确答案」<br>本测试没有对错，只有你和自己的距离</p>
+  </section>
+
+  <!-- ============ 答题页 ============ -->
+  <section id="screen-quiz" class="hidden">
+    <div class="quiz-top">
+      <span>地球Online · 角色检测中</span>
+      <span class="qn" id="qnum">Q 01 / 36</span>
+    </div>
+    <div class="hpbar"><div class="fill" id="hpfill"></div></div>
+    <div class="qcard" id="qcard"></div>
+    <div class="quiz-foot">
+      <button class="btn-back" id="btn-back">&lt; 返回上一题</button>
+      <span class="kbd-hint">键盘 1-4 可快速作答</span>
+    </div>
+  </section>
+
+  <!-- ============ 分析页 ============ -->
+  <section id="screen-loading" class="hidden">
+    <div class="terminal" id="terminal"></div>
+  </section>
+
+  <!-- ============ 结果页 ============ -->
+  <section id="screen-result" class="hidden"></section>
+
+  <footer>
+    EARTH ONLINE v2.0 · NPC DIAGNOSTIC SYSTEM<br>
+    本测试为娱乐与自我觉察工具，不构成任何人生指令
+  </footer>
+</div>
+
+<div id="toast">已复制，去粘贴发帖吧</div>
+
+<script>
+/* ================================================================
+   配置区：部署后可替换（不改也能正常用）
+================================================================ */
+const SHARE_LINK = "";        // 分享文案里的链接，留空则自动取当前页面地址
+
+/* ================================================================
+   五维定义  A任务自主 B身份解绑 C安全突破 D血条管理 E技能重构
+================================================================ */
+const DIMS = {
+  A:{name:"任务自主性",short:"任务自主",low:"主线任务全是系统发的，从没问过自己想要什么",high:"任务自己选，敢开支线，人生方向握在自己手里"},
+  B:{name:"身份解绑度",short:"身份解绑",low:"靠职位、装备、标签定义自己，没有它们就慌",high:"不靠外在装备证明自己，剥掉标签依然知道自己是谁"},
+  C:{name:"安全区突破力",short:"安全突破",low:"待在新手村用「稳定」麻醉自己，不敢进未知副本",high:"敢开新地图、进新副本，能承受不确定性"},
+  D:{name:"血条管理力",short:"血条管理",low:"讨好、内耗、完美主义，血条常年飘红",high:"会拒绝、会回血、知道什么时候该下线"},
+  E:{name:"技能重构力",short:"技能重构",low:"技能点全加在别人的期望上，天赋从未点亮",high:"敢洗点，把技能加在自己真正想做的事上"}
+};
+const DIM_KEYS = ["A","B","C","D","E"];
+
+
+/* ================================================================
+   36 道题 · 心理学深化版
+   每题4选项，s 为维度加减分：+2强玩家 / +1弱 / 0中性 / -1强NPC
+   覆盖机制：自主动机、脚本化人生、自我分化、延伸自我、
+   社会比较、聚光灯效应、损失厌恶、沉没成本、取悦症、
+   情绪耗竭、反刍思维、习得性无助、心流、自我效能
+================================================================ */
+const QUESTIONS = [
+{q:"周一早晨，闹钟响起的那一瞬间，你的身体反应更接近？",sub:"第一反应骗不了人——它暴露了你的引擎是谁点燃的",
+ o:[
+  {t:"快速醒来——今天有件我想推进的事在等我",s:{A:2}},
+  {t:"机械地按掉，身体自动进入「上班模式」，像自动寻路",s:{A:-1}},
+  {t:"胸口一沉，瞬间疲惫——明明刚睡醒",s:{D:-1}},
+  {t:"赖床时偷偷盘算：哪天能翘班，去做自己那件事",s:{C:2}}]},
+{q:"饭局上大家聊升职、房贷、鸡娃。你表面在听，心里其实在？",sub:"社会比较（Social Comparison）往往就发生在一张张饭桌上",
+ o:[
+  {t:"听着，但那是别人服务器的排行榜，跟我关系不大",s:{B:2}},
+  {t:"暗暗换算自己的分数，越算越焦虑",s:{B:-1}},
+  {t:"感到一阵耗竭，只想回家瘫着",s:{D:-1}},
+  {t:"好奇他们是怎么走到今天的，想取经",s:{A:1}}]},
+{q:"如果此刻让你换城市或换行业，你的第一反应是？",sub:"注意：是第一反应，不是想清楚之后的答案",
+ o:[
+  {t:"计划早就在跑了，只差一个触发点",s:{C:2}},
+  {t:"一阵心慌——太不确定，成本太高了",s:{C:-1}},
+  {t:"早就待不住了，天天在数日子",s:{C:2}},
+  {t:"我有能带走的手艺和存款，随时能走",s:{E:2}}]},
+{q:"当有人说「我是为你好，你应该……」，你的真实状态是？",sub:"自我分化程度，看的是你在关系压力下能否保住自己的想法",
+ o:[
+  {t:"礼貌听完，但选择权在我手里",s:{A:2}},
+  {t:"立刻开始动摇——也许TA说得对？",s:{A:-1}},
+  {t:"表面点头，胸口憋着一团火",s:{D:-1}},
+  {t:"能当场平静地说出我的不同意见",s:{D:2}}]},
+{q:"深夜有人问：「抛开一切，你到底想要什么？」你的大脑会？",sub:"「想要什么」卡壳，通常不是没答案，是检索功能休眠太久了",
+ o:[
+  {t:"蹦出清晰的答案，甚至不止一个",s:{A:2}},
+  {t:"一片空白，像断网的页面",s:{A:-1}},
+  {t:"报出一个「标准答案」：稳定、体面、差不多就行",s:{A:-1,B:-1}},
+  {t:"能说出一堆「不想要什么」，但「想要什么」卡住了",s:{A:0}}]},
+{q:"你人生的主线任务——考学、考证、工作、结婚的节奏，是谁排的？",sub:"脚本化人生最隐蔽的地方：它长得像「常识」",
+ o:[
+  {t:"我亲手排的，每一环我都点头过",s:{A:2}},
+  {t:"父母排的，我负责执行",s:{A:-1}},
+  {t:"不知道——大家都在跑，我也跟着跑",s:{A:-1}},
+  {t:"写过自己的版本，后来被现实改回了默认设置",s:{A:1}}]},
+{q:"假如明天起，没有任何人、任何系统给你安排任务，你会？",sub:"自由对NPC是威胁，对玩家是地图",
+ o:[
+  {t:"兴奋——终于能全速跑自己的支线了",s:{A:2,C:1}},
+  {t:"发慌——像突然被移出队伍的NPC，不知所措",s:{A:-1}},
+  {t:"先爽三天，然后被一种空虚感吞没",s:{A:0,D:-1}},
+  {t:"照常运转——我的节奏本来就不依赖别人",s:{A:1}}]},
+{q:"回想当年填志愿、选行业的那几天，你说过「其实我想……」这句话吗？",sub:"被压回去的那半句话，往往就是第一张支线任务卷轴",
+ o:[
+  {t:"说过，而且坚持了",s:{A:2}},
+  {t:"说过，但被一句「那能当饭吃吗」压了回去",s:{A:-1,E:-1}},
+  {t:"没说过——我当时就没有自己的想法",s:{A:-1}},
+  {t:"说过，最后各退半步，选了个折中的",s:{A:0}}]},
+{q:"假如收入完全不变，任何工作随便挑，你会？",sub:"这道题删掉了钱这个变量——剩下的就是你与热爱的真实距离",
+ o:[
+  {t:"留在现在的岗位上，我是真的喜欢",s:{E:2}},
+  {t:"立刻换成那件惦记了很多年的事",s:{E:2,A:1}},
+  {t:"卡住——我说不出想做什么",s:{E:-1,A:-1}},
+  {t:"换个不用动脑的，先把累养好",s:{D:-1}}]},
+{q:"有没有一件事，做起来别人觉得吃力、你却乐在其中？它现在？",sub:"「别人觉得难你不觉得累」是天赋最可靠的信号之一",
+ o:[
+  {t:"有，而且已经变成我的收入或作品的一部分",s:{E:2}},
+  {t:"有，但只活在童年或旧爱好里",s:{E:-1}},
+  {t:"从来没发现过这种事",s:{E:0,A:-1}},
+  {t:"有，正在偷偷给它腾时间",s:{E:1,A:1}}]},
+{q:"你做重大决定时，脑内弹出的第一个声音更像？",sub:"内在动机还是外在动机，听第一个声音就知道",
+ o:[
+  {t:"「我想要哪种人生？」",s:{A:2}},
+  {t:"「别人会怎么看我？」",s:{B:-1}},
+  {t:"「哪种最不容易出错？」",s:{C:-1}},
+  {t:"「我爸妈／对象会同意吗？」",s:{A:-1}}]},
+{q:"如果明天职位、头衔、公司名全部清零，「我是谁」这个系统会？",sub:"延伸自我（Extended Self）测试：你的自我有多少挂在了头衔上",
+ o:[
+  {t:"正常运行——我的能力、作品、关系网都在",s:{B:2,E:1}},
+  {t:"短暂报错，但能重启",s:{B:1}},
+  {t:"直接崩溃——那是我存在的全部证据",s:{B:-1}},
+  {t:"松了口气——终于不用演了",s:{B:2}}]},
+{q:"让你做一段30秒自我介绍，但禁止提到公司和职位，你会？",sub:"能离开标签介绍自己，是身份解绑的及格线",
+ o:[
+  {t:"轻松说满，讲我做的事和我在乎的东西",s:{B:2}},
+  {t:"说两句就卡壳，大脑疯狂搜索「那我算什么」",s:{B:-1}},
+  {t:"不自觉又绕回工作——「我现在在做……」",s:{B:-1}},
+  {t:"把它变成段子，幽默带过",s:{B:0}}]},
+{q:"别人向第三方介绍你时，你希望TA的第一句是？",sub:"你希望被记住的方式，就是你价值感的存放地址",
+ o:[
+  {t:"「TA做过一个挺厉害的东西」",s:{B:2}},
+  {t:"「TA在大厂／体制内／XX公司」",s:{B:-1}},
+  {t:"「TA混得挺好的」",s:{B:-1}},
+  {t:"无所谓，我不用别人的介绍定义我",s:{B:2}}]},
+{q:"发一条朋友圈，从编辑到发送，你的流程是？",sub:"聚光灯效应：我们总高估自己被注视的程度约3倍",
+ o:[
+  {t:"想到就发，它是我生活的存档",s:{B:2}},
+  {t:"反复措辞修图，预判每一条可能的评论",s:{B:-1,D:-1}},
+  {t:"编辑半天，最后觉得「算了，不发了」",s:{B:-1,C:-1}},
+  {t:"几乎不发——没什么值得被看见",s:{B:0}}]},
+{q:"如果你最贵的三样「装备」突然从人生里消失，你预计自己会？",sub:"崩溃程度 = 你的自我与装备的绑定深度",
+ o:[
+  {t:"心疼三分钟，然后照常生活",s:{B:2}},
+  {t:"好几天缓不过来，感觉「掉级」了",s:{B:-1}},
+  {t:"立刻开始规划怎么补回来，不然见人没底气",s:{B:-1}},
+  {t:"早就想跟它们说再见了",s:{B:1}}]},
+{q:"「换地图」（换行业／城市／圈子）这件事，你的实战经验是？",sub:"敢不敢不重要，做没做过才重要——经验值只认实战",
+ o:[
+  {t:"换过至少一次，越换越熟练",s:{C:2}},
+  {t:"全是理论——想过无数次，一次没敢",s:{C:-1}},
+  {t:"试过一次，摔了，现在更不敢了",s:{C:0,D:-1}},
+  {t:"正在换的途中",s:{C:2}}]},
+{q:"「稳定」对你来说更像？",sub:"稳定是真实需求还是恐惧的别名，答案完全不同",
+ o:[
+  {t:"穿了多年的旧铠甲——安全，但限制了所有动作",s:{C:2}},
+  {t:"氧气——没有它我活不下去",s:{C:-1}},
+  {t:"阶段性资源——攒够了就去换地图",s:{C:1}},
+  {t:"一个陌生的词，我的人生从没稳定过",s:{C:0}}]},
+{q:"一个心仪很久的机会出现了，但要离开熟悉的一切，你会？",sub:"损失厌恶：大脑对「失去现有」的痛感约是「得到新的」的两倍",
+ o:[
+  {t:"连夜做风险清单，能扛就上",s:{C:2,A:1}},
+  {t:"心动三天，第四天说服自己「现在这样也挺好」",s:{C:-1}},
+  {t:"根本不需要犹豫，大不了读档重来",s:{C:2}},
+  {t:"把决定权交给亲友投票，然后听他们的",s:{C:-1,D:-1}}]},
+{q:"旅行时的你，更像哪种玩家？",sub:"旅行是最小的「换地图」模拟器",
+ o:[
+  {t:"攻略只做一半，另一半留给随机事件",s:{C:1,A:1}},
+  {t:"跟团、打卡、安全返回",s:{C:-1}},
+  {t:"背包就走，在路上认识陌生人",s:{C:2}},
+  {t:"计划精确到小时，任何偏离都让我焦虑",s:{C:-1,D:-1}}]},
+{q:"看到「35岁裸辞转行成功」的故事，你内心第一反应？",sub:"归因方式决定你会靠近还是远离那种人生",
+ o:[
+  {t:"羡慕，并且开始盘算自己的版本",s:{C:1,A:1}},
+  {t:"「TA肯定有退路／家里有矿」",s:{C:-1}},
+  {t:"我就是故事里那个人",s:{C:2}},
+  {t:"何必折腾，安稳不好吗",s:{C:-1}}]},
+{q:"每当你想认真做一件「自己的事」，大脑会自动？",sub:"这是习得性无助的日常形态：念头刚升起就被自动拦截",
+ o:[
+  {t:"搜索「怎么做成」，顺手开始拆解步骤",s:{C:1,A:1}},
+  {t:"循环播放最坏结局的预告片",s:{C:-1}},
+  {t:"检索别人失败的案例，证明「不是我一个人不行」",s:{C:-1}},
+  {t:"弹出「明天再说」的窗口，而我每次都点确定",s:{D:-1}}]},
+{q:"一件事做了很多年，越来越没意思，但「都坚持这么久了」，你会？",sub:"沉没成本谬误：让过去的投入，继续吃掉你的未来",
+ o:[
+  {t:"定期问自己「还要继续吗」，答案是动态的",s:{C:1,A:1}},
+  {t:"继续——放弃了，前面的年数不就白费了",s:{C:-1}},
+  {t:"一边熬一边怨，熬到某个点突然爆发",s:{D:-1}},
+  {t:"已经在安排退出路线了",s:{C:2}}]},
+{q:"周日晚上，你的血条状态是？",sub:"周日晚是情绪耗竭最诚实的读数时刻",
+ o:[
+  {t:"满的——周一只是另一天的开始",s:{D:2}},
+  {t:"被「没做完的事」和「没休息够」双向夹击",s:{D:-1}},
+  {t:"累到失语，用熬夜报复这一周",s:{D:-1}},
+  {t:"略低，但我有固定的回血仪式",s:{D:1}}]},
+{q:"同事或朋友把明显不属于你的活儿推过来，你会？",sub:"取悦症的现场测试：接不接，3秒内就有答案",
+ o:[
+  {t:"当下就挡回去，理由不需要很长",s:{D:2}},
+  {t:"接下，然后带着怨气加班做完",s:{D:-1}},
+  {t:"接下，表面没事，回家开始反刍",s:{D:-1}},
+  {t:"看人下菜，但我有一条清晰的线",s:{D:2}}]},
+{q:"情绪掉到谷底的那几天，你的自救方式是？",sub:"有没有「主动回血」的技能，是NPC和玩家的分水岭",
+ o:[
+  {t:"有固定回血点：跑步、独处、写东西、见特定的人",s:{D:2}},
+  {t:"刷手机到凌晨，用麻木覆盖低落",s:{D:-1}},
+  {t:"找人倾诉，可说完反而更空",s:{D:0}},
+  {t:"没有方式，硬扛到它自己过去",s:{D:-1}}]},
+{q:"当别人越界——占用你时间、拿你东西、开过分的玩笑，你的第一反应是？",sub:"边界感不看想法，看身体反应",
+ o:[
+  {t:"当场平静地指出",s:{D:2}},
+  {t:"心跳飙升，但嘴上说「没事」",s:{D:-1}},
+  {t:"笑着接住，转身在脑内重播一百遍",s:{D:-1}},
+  {t:"事后编好了完美的反击台词，可惜没机会用了",s:{D:-1}}]},
+{q:"一句负面评价——哪怕来自不重要的人——在你脑内能存留多久？",sub:"反刍思维：把记忆当磨盘，反复咀嚼已经结束的事",
+ o:[
+  {t:"过夜自动清理缓存",s:{D:2}},
+  {t:"三天起步，深夜自动回放",s:{D:-1}},
+  {t:"当时怼回去了，不留过夜",s:{D:1,C:1}},
+  {t:"能和数年前的黑历史组成合集，定期巡演",s:{D:-1}}]},
+{q:"假设你昨天拒绝了一个请求，今天的你更可能？",sub:"拒绝后的愧疚感时长，是「取悦症」的恢复速度指标",
+ o:[
+  {t:"神清气爽，甚至想奖励自己",s:{D:2}},
+  {t:"反复回想对方的表情，怀疑自己是不是太冷血",s:{D:-1}},
+  {t:"想补偿对方——下次TA要什么我都答应",s:{D:-1}},
+  {t:"根本记不住这回事",s:{D:1}}]},
+{q:"最近一次「忘记时间」的体验（心流），发生在？",sub:"心流是热爱的测谎仪——刷手机的「爽」不算心流",
+ o:[
+  {t:"就在这几天，做我在乎的事时",s:{E:2}},
+  {t:"上学时代的事了",s:{E:-1}},
+  {t:"刷短视频算吗？那是唯一不用动脑的时间",s:{D:-1}},
+  {t:"偶尔有，但总被各种消息打断",s:{E:0}}]},
+{q:"你付费买课、买工具时，最接近哪种状态？",sub:"警惕「消费式自我提升幻觉」：付款的多巴胺替你完成了行动",
+ o:[
+  {t:"先想清楚要解锁什么技能，再精准购买",s:{E:2,B:1}},
+  {t:"焦虑发作时下单，付款那刻焦虑值减半",s:{B:-1}},
+  {t:"「最后三单！」「今晚涨价！」——好了，买好了",s:{B:-1,E:-1}},
+  {t:"几乎不买，免费资源够我学了",s:{E:1}}]},
+{q:"如果给你三个月带薪假期，可以学任何东西，你会？",sub:"秒答的人早就攒好了心愿清单；卡壳的人只是太久没问过自己",
+ o:[
+  {t:"秒答——清单在备忘录里躺了很久",s:{E:2}},
+  {t:"纠结很久，发现说不出「非学不可」的东西",s:{E:-1,A:-1}},
+  {t:"学能涨薪的，热爱什么的以后再说",s:{E:0}},
+  {t:"学那个「没用但我就是喜欢」的",s:{E:2,A:1}}]},
+{q:"你有没有一件「不为赚钱、纯粹热爱」却一直在做的事？",sub:"秘密支线是玩家人格的种子——它证明你本来就知道自己要什么",
+ o:[
+  {t:"有，它是我保存完好的秘密支线",s:{E:2,A:1}},
+  {t:"曾有，后来被「没用」「耽误正事」劝退了",s:{E:-1}},
+  {t:"这个问题让我愣住——原来可以这样活？",s:{E:0,A:-1}},
+  {t:"刚开始养，还很脆弱，但我没放弃",s:{E:1}}]},
+{q:"简历之外，你有属于自己的作品、账号或小事业吗？",sub:"NPC交作业，玩家攒作品——后者才带得走",
+ o:[
+  {t:"有，那才是我想被世界记住的方式",s:{E:2}},
+  {t:"计划了三年，开头三次，都不了了之",s:{E:-1,C:-1}},
+  {t:"主线任务就耗光了我，没力气开分矿",s:{D:-1}},
+  {t:"有雏形了，正在慢慢攒",s:{E:1,A:1}}]},
+{q:"深夜刷到「同龄人年入百万／三年财务自由」，你会？",sub:"算法最懂怎么收割社会比较焦虑——它推给你的不是内容，是刺激",
+ o:[
+  {t:"划走——那是别人服务器里的剧情",s:{B:2}},
+  {t:"手指停住，胸口发紧，越刷越停不下来",s:{B:-1,D:-1}},
+  {t:"默默算一下自己和TA的差距，然后失眠",s:{B:-1}},
+  {t:"好奇TA的路径，认真研究起来",s:{A:1,E:1}}]},
+{q:"如果给过去三年的自己写一句存档感言，你会写？",sub:"最后这道题没有对错——它只是把你已经知道的事说出口",
+ o:[
+  {t:"「副本是自己的，进度慢，但方向没跑偏」",s:{A:2}},
+  {t:"「全程自动寻路，系统让去哪去哪」",s:{A:-1,C:-1}},
+  {t:"「血量见底，装备没攒下几件」",s:{D:-1,B:-1}},
+  {t:"「换了张新地图，正在重新练号」",s:{C:2}}]}
+];
+/* ================================================================
+   8 种 NPC 原型库（含隐藏优势 hope）
+================================================================ */
+const ARCHETYPES = {
+  A:{name:"主线任务搬运工",tag:"核心卡关维度：任务自主性",
+    desc:"按部就班走了三十年，从没打开过任务日志看看自己到底要什么。",
+    line:"「大家不都这样吗？」",
+    hope:"你的执行力、耐性和「说到做到」的可靠度是满级属性——全服务器稀缺。缺的从来不是能力，是那份没人替你写的任务日志。",
+    deep:"你运行的是一份<b>继承来的剧本</b>：父母的期待、同龄人的节奏、社会的默认模板——心理学称之为「脚本化人生」。更深层的问题是<b>外部目标取向</b>：研究反复表明，追逐他人设定的目标，即使达成了，幸福感也不会提升，反而伴随「这真的是我要的吗」的空虚。你不是没有能力选择，而是<b>从未被允许练习选择</b>。练得少了，「我想要什么」这个功能就休眠了。请放心：它没有坏，只是在等你重新登录。",
+    list:["别人问「你最近在忙什么」，你的回答总以「没办法，工作／家里要求」开头","你的待办清单里全是「必须做」，几乎没有「我想做」","人生重大决定（志愿、工作、城市）至少有一半是别人拍的板","你说「我不行」的次数，远远多于「我不想」","周末空下来，你的第一反应是补觉补剧，而不是「终于可以做我的事了」"],
+    actions:["今晚花 10 分钟建一份「我的任务日志」：写下 3 件「没有任何外部奖励、但我就是想做」的事，先不评判可行性","本周做一次主线审计：把正在做的事分成两栏——「我选的」和「别人发给我的」，看清比例","挑一件你纯粹因为「大家都是」而做的事，这周暂停一次，观察一下感受"],
+    roadmap:{week:"完成主线审计，标记出 3 个「从没问过自己」的领域（工作／城市／关系），把问题写下来贴在看得见的地方",month:"在其中一个领域发起一次支线实验：接一个副项目、学一个无关技能、去一座陌生城市。规模不重要，重要的是「这次是我选的」",year:"完成一次主动的人生结构调整——转岗、搬家或关系重谈。这次的标准只有一个：在决策记录里，签字的是你自己"},
+    boss:"「同辈进度条」——每当你看到同龄人升职、买房、结婚，你会瞬间觉得自己手里的支线「不务正业」，乖乖掉回主线。记住：你在看别人的进度条，别人也在看你的。",
+    weakness:"它怕的不是你的决心，是你自己的进度条——每次支线推进一格，它的伤害就减半。",
+    team:"空血条幸存者",teamWhy:"你想清楚要什么之前，得先活下来。<b>幸存者</b>会教你把血条加满，你带TA看到主线之外还有地图——一个敢走，一个会想，正好互补。"},
+  B:{name:"装备收集型NPC",tag:"核心卡关维度：身份解绑度",
+    desc:"装备=身份。没有名牌包、好车、编制傍身，你就不确定「我是谁」。",
+    line:"「你现在什么职位？」",
+    hope:"你对品质、价值和「什么是好东西」的判断力远超平均——这是天生的产品人和买手底子。把它从「证明自己」的服务器，迁到「创造价值」的服务器，就是转职。",
+    deep:"你的自我价值感挂在<b>外部认证</b>上——心理学称之为「外源自尊」。每一件装备都在替你回答「我是谁」这个问题，所以装备不能停：包要新款、车要升级、职位要够响。消费心理学者称之为<b>补偿性消费</b>——你买的时候缓解的是不安，不是需求。危险的根源在于「延伸自我」效应：<b>当「我拥有什么」变成「我是什么」，装备一贬值，你就跟着掉血</b>。而装备，永远在贬值。",
+    list:["发朋友圈前，会先想想「这会不会显得我混得不错／不好」","认识新朋友，10 分钟内就会想知道对方的职位和收入量级","心情低落时，购物车比日记本先打开","两份工作钱差不多，你会选「说出去有面子」的那个","扔掉一件贵的东西，你感觉掉了等级，而不只是掉了一件物品"],
+    actions:["本周做一次「装备断舍离」：挑一件很久不用但「不敢扔因为贵」的东西，送人或卖掉，记录感受","写一段「裸机自我介绍」：不用任何头衔、公司、资产，只描述你做的事和你在乎的事","下次想买超过 500 元的东西前，先写一句话：我在买的到底是功能，还是「那个更好的自己」？"],
+    roadmap:{week:"完成裸机自我介绍并存档——这是你第一份不依赖装备的身份证明",month:"把每月装备预算的 30% 转投到技能和体验上（课程、旅行、作品），亲身对比「花钱买经历」和「花钱买面子」的差别",year:"建立至少一个「不消费也能确认自我价值」的身份锚点——一个作品、一项被认可的技能、一个社群角色。装备会贬值，锚点只会升值"},
+    boss:"「版本更新」——新款永远在出，同辈永远在买。当你的价值感绑定在装备栏，别人每换一次装，你就自动掉一次血。唯一的解法，是把绑定对象从装备换成你自己。",
+    weakness:"它怕你停止对比的那一刻——当你不再看别人的装备栏，它就从世界BOSS降级成了路边小怪。",
+    team:"技能点错者",teamWhy:"你向外收集装备，TA向内寻找天赋。TA会问你那个扎心的问题——<b>「剥掉这些，你还剩什么？」</b>你们互为镜子，照见对方不敢看的那一面。"},
+  C:{name:"新手村钉子户",tag:"核心卡关维度：安全区突破力",
+    desc:"用「稳定」给自己上麻药。想走出安全区，腿先软了。",
+    line:"「再等等吧。」",
+    hope:"你的谨慎和风险意识是真实的天赋——大多数莽撞的玩家都死在没有你这样的人把关上。你只需要把这份谨慎从「拒绝出发」重新配置成「计算路线」。",
+    deep:"这不是懒，是<b>损失厌恶</b>——心理学研究反复证明：人对「失去现有」的痛感，约是「得到新的」快感的两倍。你的大脑每天给你做同一道算术题：已知的无聊 vs 未知的危险，答案永远是留在村里。再加上<b>沉没成本</b>的加成——都熬了这么多年了，现在走多亏——于是一个村子住成了祖宅。而长期待在舒适区还有个隐藏代价：你的<b>自我效能感</b>（「我能搞定新事情」的信念）会因为缺乏证据而逐年折旧。可怕的不是你出不去，而是你已经把「出去」这件事，从待办清单挪到了「下辈子再说」。",
+    list:["「再等等」是你的口头禅，但你等的是什么，其实说不清","过去 3 年，你人生的关键词没换过：同一份工作、同一座城市、同一套生活动线","收藏夹里躺着很多「以后去／以后学／以后试」，没有一个有日期","别人冒险成功的消息让你隐隐不甘，你安慰自己「那是他运气好」","你常用「我这个人就是这样」来终结所有关于改变的话题"],
+    actions:["今天定一个 5% 的冒险：不用换城市那么大，就做一件平时绝不会做的小事——换条路线上班、约一个陌生领域的人聊聊、报一节没上过的体验课","从收藏夹里挑出放得最久的那条「以后」，给TA定一个本月内的日期","开一个「离村基金」：每月固定存一笔，金额不重要，重要的是给大脑一个信号——地图随时可以换"],
+    roadmap:{week:"完成 3 次 5% 冒险，每次记一句「其实也没那么可怕」",month:"进一次真正的新副本——一个小项目、一段新关系、一个新圈子，允许自己表现笨拙，新手掉血很正常",year:"完成一次结构性换图：换岗位、换城市、换行业三选一。带着你攒了一年的离村基金，以及「换过一次地图」的经验值"},
+    boss:"「亲友团的安全感绑架」——「多稳定啊，别折腾了。」每次你想走，最亲的人会把你劝回村。记住：他们不是坏，他们只是也怕。你的解法不是说服他们，是先走给他们看。",
+    weakness:"它怕的不是你的勇气，是别人的成功案例——你每见一个「走出来还活得更好」的人，它的护盾就裂一道缝。",
+    team:"主线任务搬运工",teamWhy:"TA执行力满级但没方向，你有想法但不敢动。<b>你们组队</b>：TA负责迈腿，你负责看地图——一个冲锋一个导航，离开新手村的效率翻倍。"},
+  D:{name:"空血条幸存者",tag:"核心卡关维度：血条管理力",
+    desc:"讨好型+内耗型。血条常年飘红，周末累到不想说话，但你说「我没事」。",
+    line:"「我没事，我还好。」",
+    hope:"你的共情力、责任心和「让别人舒服」的能力是稀有属性——只是长期供血给别人了。同一套系统，供血给自己时，你会是最快学会回血的那批玩家。",
+    deep:"你运行的是一套<b>高警觉、低回报</b>的生存程序：把别人的情绪当任务，把冲突当最大伤害——心理学里叫「取悦症」叠加「情绪耗竭」。你不是天生脾气好，你是学会了：<b>只有让别人满意，环境才安全</b>。这套程序往往有个更早的来源——很久以前，你的安全感确实需要靠察言观色来挣。问题是它太费蓝：你替所有人回血，却找不到自己的补给点。再叠加<b>反刍思维</b>——白天没说的话，深夜在脑内重播一百遍——血条就永远在飘红。你说「我没事」的次数越多，系统就越相信你不需要回血，于是发给你的任务只会更多。",
+    list:["微信里「收到」「好的」「没关系」的发送频率，高到能当口头禅","聚会上你经常是照顾气氛、递话圆场的那一个","你很难想起「我上一次发脾气」是什么时候","「算了」是你心里出现频率最高的词之一","周末的累不是玩累了，是「撑了一周，终于能躺了」"],
+    actions:["今天拒绝一次：找一件「不想去但不好意思推」的事，用「这次不行」三个字推掉，不加任何长篇解释","建一个「回血清单」：写下 5 件做完真的会恢复能量的小事（刷手机不算），本周至少执行 2 件","给「我没事」做个翻译练习：下次想说之前，先在心里问一句——我实际上是累、烦、还是委屈？不用说出来，识别到就算完成"],
+    roadmap:{week:"完成 3 次小型拒绝 + 2 次回血清单执行，记录每次的心理变化",month:"建立稳定的「下线时间」：每周固定时段，消息不回、安排不接，像服务器维护一样理直气壮",year:"你的社交圈会完成一轮自然更新——留下那些不因为你拒绝就消失的人。你会惊讶于最后剩下来的质量"},
+    boss:"「愧疚感反扑」——每次你拒绝别人、优先自己，愧疚感会立刻到账：「我是不是太自私了？」提前告诉你：那不是良心，那是旧程序的补丁。重启几次，它就卸载了。",
+    weakness:"它怕的是重复暴露——你每拒绝一次而不道歉，它的攻击力就永久 -10。它赢不了消耗战。",
+    team:"社交副本囚徒",teamWhy:"你们都在「别人眼里的自己」这件事上持续失血，但解药在对方手里：<b>你替TA练习说「不」，TA替你确认「别人真的没那么在意你」</b>。互换补课，效果拔群。"},
+  E:{name:"技能点错者",tag:"核心卡关维度：技能重构力",
+    desc:"技能点全加在父母、社会的期望上。自己的天赋？从来没点亮过。",
+    line:"「这工作是我爸妈让我做的。」",
+    hope:"你能把不喜欢的技能点练到「还行」——这个学习能力本身就惊人。把它用在热爱的事上，是降维打击。天赋不是没有，它一直在等你的第一次充值（时间）。",
+    deep:"你的天赋不是没有，是<b>从未获得入场资源</b>。心理学上有个概念叫「自我概念延迟」——当一个人长期按外部剧本行动，会逐渐丧失对「我擅长什么、我热爱什么」的感知力。这不是能力问题，是<b>感知通道生锈了</b>。每次你说「我也不知道自己喜欢什么」，其实是在描述一块从没被允许打开过的技能面板。判断天赋有个可靠信号叫<b>心流</b>——做那件事时别人觉得吃力、你却忘记时间。你的心流样本之所以稀缺，是因为它们从来没有被认真采集过。好消息：人生游戏里，技能点可以洗，而且洗点成本远比你以为的低。",
+    list:["说起现在的工作，你用得最多的词是「还行」「就那样」「习惯了」","你有过「我其实一直想试试××」的念头，但它从没变成一节体验课、一次尝试","你选择当前路径的重要原因是「家里觉得稳定、体面」","刷到别人做热爱之事的内容时，你会停留很久","问「你擅长什么」，你的第一反应是工作技能，然后就没有第二反应了"],
+    actions:["今晚做一次「技能面板盘点」：写下 3 件你做起来「别人觉得难、你不觉得累」的事——那往往就是天赋的藏身处","从里面挑 1 件，本周投入 2 小时，产出一个最小的东西：一篇文章、一张图、一顿饭、一个小工具","问 3 个熟悉你的人：「你觉得我最擅长什么？」——他视角能看见你的隐藏属性"],
+    roadmap:{week:"完成技能面板盘点 + 一次 2 小时微产出，让「天赋」从概念变成实物",month:"选一个天赋方向持续投入，完成 3 次产出，用真实反馈校准方向——市场和你的热爱会告诉你重叠区在哪",year:"让新技能产生第一次真实回报：第一笔副业收入、第一个被转发的作品、第一次被以「会××的人」介绍。那一刻你就知道，洗点成功了"},
+    boss:"「沉没成本怪」——「都干了这么多年了，现在换，前面不都白费了？」它守在你每次想洗点的路口。记住：过去的技能点不会清零，它们会变成你新职业的被动加成。",
+    weakness:"它怕的是算总账——把「再忍20年」和「转1年试试」摆在同一张表上算，它的谎言立刻穿帮。",
+    team:"氪金路人",teamWhy:"TA用花钱缓解「该学点什么」的焦虑，你用「再等等」回避试错。<b>互相盯防</b>：你帮TA把剁手清单变回钱，TA帮你把收藏夹变成行动。"},
+  BC:{name:"社交副本囚徒",tag:"核心卡关维度：安全区突破 × 身份解绑",
+    desc:"被亲戚、朋友、同事的评价锁死在原地。不敢不一样，因为怕被议论。",
+    line:"「别人会怎么看我？」",
+    hope:"你对人际信号的感知精度是间谍级别的——这个属性放在任何团队里都是核心位。唯一的配置错误，是让这台雷达一直对着自己扫描。",
+    deep:"你活在无数双眼睛组成的全景监狱里——心理学叫<b>「聚光灯效应」</b>：我们总以为自己被注视的程度，是实际的 3 倍以上。你人生的一大堆决策，实际决策者不是你，是「别人会怎么说」这个<b>幻影董事会</b>——它从不签字，却有一票否决权。最讽刺的是：那些你牺牲自己去讨好的人，大多根本没在看你；而真正在意你的人，只希望你活得舒展。你不是被关起来的——<b>你是被自己想象出来的看守困住的</b>。而牢房的钥匙，从头到尾都在你手里。",
+    list:["做决定前，你会先在脑内召开「亲戚朋友评审会」","你的朋友圈经过多层审核，有时编辑半天，最后干脆不发了","辞职、单身、转行、不婚——想法很久了，但「没法跟家里交代」","你羡慕那些活得肆意的人，但只敢匿名点赞","「丢人」「被人笑话」是你决策时稳定的隐藏扣分项"],
+    actions:["本周做一次「小规模越狱」：公开发一次没人规定你不能发的内容——一个观点、一个作品、一段生活。然后观察：你会发现根本没人审判你","写一份「幻影董事会名单」：你怕的那些「别人」，具体是谁？写出来你会震惊于这份名单有多短、多模糊","下次决策时强制自己先写「我自己想要的是——」，写完之后，才允许「别人」发言"],
+    roadmap:{week:"完成一次越狱发帖 + 幻影董事会名单，让恐惧从一团雾变成具体可数的对象",month:"推进一件「评审会不会同意但你想要」的事到可见进度，练习有分寸地承受议论",year:"完成一次正式的「身份公开」：把你的某个重大选择坦荡告知该知道的人。用你的人生说服他们，而不是用你的解释"},
+    boss:"「家族群聊」——一条热搜、一句亲戚的「为你好」、一声「别人家孩子」，都能把你打回囚室。对治方法不是屏蔽，是练级：他们的评价是NPC的固定台词，而你已经拿到玩家视角。",
+    weakness:"它怕的是你点名——把「别人」具体到人之后，你会发现牢房里其实只关着你一个人。",
+    team:"空血条幸存者",teamWhy:"你们共享「他人评价过敏」这个 debuff，但解药恰好互备：<b>你练表达，TA练边界</b>——同一门课的两个学分，一起修。"},
+  BE:{name:"氪金路人",tag:"核心卡关维度：身份解绑 × 技能重构",
+    desc:"买课、买装备、囤工具，跟风氪金。以为花钱=升级，账单先爆了。",
+    line:"「再买这门课，我就能改变了。」",
+    hope:"你有行动意愿，也愿意为自己投资——这两样很多人一辈子都没有。差的不是钱，是付款和行动之间的那一步。一旦接通，你是升级最快的那种玩家。",
+    deep:"你买的那一刻，确实「变好了」——心理学称之为<b>「消费式自我提升幻觉」</b>：付款瞬间大脑会真实地分泌多巴胺，产生「我已经在变好」的错觉，然后<b>这个错觉替你完成了本该由行动完成的任务</b>。这就是为什么你的网盘里躺着几十个 G 的课、书架上有塑封没拆的书——它们的功能是焦虑的止痛药，不是成长的阶梯。而真正的升级，从来不发生在付款页面。你缺的从来不是资源，是把已有资源<b>用完一次</b>的完整体验——那个体验，才是你从没解锁过的真正技能。",
+    list:["听到「最后一天优惠」会心跳加速","买了课、书、工具之后，使用进度条长期停在 10% 以下","购物车里躺着至少一件「买了等于做了」的东西","你有 3 个以上「提升自我」类 App 的会员","你习惯用「投资自己」来解释一笔冲动消费"],
+    actions:["今晚盘点：列出所有「为变好而买」但没用的课、书、工具，算出总金额——直面那个数字，它会替你戒断大半","执行「一进一出」规则：新买一门课的前提，是用完一门旧的。购买资格 = 完成证明","把下次想氪金的金额换成「陪伴式消费」：请一个已经做到的人喝杯咖啡聊一小时，性价比吊打录播课"],
+    roadmap:{week:"完成氪金盘点，并冻结新购入——想买的东西先放购物车凉 7 天",month:"从已有资源里挑 1 门课完整学完并产出作品，体验一次「用完比买多」的升级实感",year:"把氪金预算改造成「成长对赌基金」：只有你完成了行动，钱才解锁。让每一笔支出都绑定一个产出"},
+    boss:"「限时秒杀」——「仅剩 3 个名额」「今晚涨价」。所有制造稀缺感的话术攻击的都是你同一个弱点：用付款缓解「怕落后」的焦虑。反杀技巧只有一条：真正的机会，从不限时。",
+    weakness:"它怕 7 天冷静期——你晾它一周再看，99% 的「最后三单」都会重新上架。",
+    team:"技能点错者",teamWhy:"你们都在「开始」这件事上卡关：你用付费代替开始，TA用等待代替开始。<b>互相监督「只行动、不剁手」</b>，两个人的胜率都翻倍。"},
+  AD:{name:"循环刷怪工",tag:"核心卡关维度：任务自主 × 血条管理",
+    desc:"同一个副本刷了十年，同一个错误犯了十年。不是不想变，是循环把路径焊死了。",
+    line:"「我也想改，但不知道怎么开始。」",
+    hope:"你的耐力和对重复的容忍度，是长线玩家才有的属性——大多数人连一个副本都刷不满两周。把这份耐力加上方向，就是复利。",
+    deep:"你困在一个双重循环里。外部是<b>「路径依赖」</b>：收入、技能、人际关系全部绑定在当前副本上，离开成本逐年升高。内部是<b>「习得性无助」</b>：尝试过、失败过、被劝退过，大脑已经把「改变」归类为不可完成的任务——于是每次念头升起，都自动匹配「算了吧」的结局。心理学上最扎心也最有希望的部分是：<b>无助感来自「不可控」的体验，而不是「不行」的事实</b>——只要有一次可控的小胜利，这个循环就开始松动。你不是不努力，你是在用战术上的勤奋，掩盖战略上的停滞。刷怪很累，但熟悉；改变很险，但才是出口。",
+    list:["「我也想改」的后面，永远跟着一个「但是」","你的一天可以精确预测，连几点烦躁都是固定的","每隔一段时间你会 emo 一次，而且内容高度雷同","计划、健身卡、打卡App……你的坚持周期通常不超过两周","你很清楚问题在哪，但「知道」和「做到」之间，隔了十年"],
+    actions:["今天把「我也想改，但是……」写下来，把「但是」后面的内容逐条审问：这是事实，还是循环的台词？","选一个最小循环下手：把坚持不了两周的宏大计划，砍成「每天 5 分钟、连续 7 天」的微量版——先续上连胜记录","约一个人生路径和你完全不同的朋友深聊一次，你会捡到新地图的碎片"],
+    roadmap:{week:"识别你的主循环（通常是 1 个工作循环 + 1 个情绪循环），并让微量行动连胜 7 天",month:"在主循环上打开缺口：把一件重复多年的事换掉做法，或把一件拖了多年的事首次推进",year:"完成一次「换副本」级别的结构变化，然后复盘这整条路径——它会成为你之后所有改变的模板"},
+    boss:"「第 13 天」——所有新尝试的阵亡高发区。你的旧循环不是被一次决心打败的，是被「每天 5 分钟」这种小到不好意思失败的行动瓦解的。连胜断了不算输，重开一局就行。",
+    weakness:"它怕的是连胜记录——不在乎单日大小，只在乎连续天数。它最怕你把目标砍到「小到不可能失败」。",
+    team:"新手村钉子户",teamWhy:"你俩的组合技叫<b>「互相垫刀」</b>：你推TA出门，TA拉你回血。都困在原地太久的人，组队才走得出去。"}
+};
+
+/* 单维 → 原型；混合维度对 → 原型 */
+const SINGLE_MAP = {A:"A",B:"B",C:"C",D:"D",E:"E"};
+const COMBO_MAP  = {AD:"AD",BE:"BE",BC:"BC"};
+const MIX_THRESHOLD = 5; /* 两个最低维度分差≤5 判定混合型 */
+
+function levelOf(avg){
+  if(avg>=82) return {cls:"level-3",text:"隐藏身份：玩家预备役",idx:3};
+  if(avg>=62) return {cls:"level-2",text:"即将觉醒",idx:2};
+  if(avg>=40) return {cls:"level-1",text:"中度NPC",idx:1};
+  return {cls:"level-0",text:"重度NPC",idx:0};
+}
+/* ================================================================
+   像素图系统：字符画 → SVG（零依赖，离线可用）
+================================================================ */
+function px(rows, pal, scale){
+  const w = rows[0].length, h = rows.length;
+  let s = '<svg viewBox="0 0 '+w+' '+h+'" width="'+(w*scale)+'" height="'+(h*scale)+'" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">';
+  rows.forEach(function(row,y){
+    for(let x=0;x<row.length;x++){
+      const ch=row[x];
+      if(ch!=="."&&pal[ch]) s+='<rect x="'+x+'" y="'+y+'" width="1" height="1" fill="'+pal[ch]+'"/>';
+    }
+  });
+  return s+'</svg>';
+}
+/* 合成：角色(12列) + 右侧道具，画到同一张画布 */
+function pxCompose(mainRows, propRows, propX, propY){
+  const W = Math.max(mainRows[0].length, propX+propRows[0].length);
+  const H = Math.max(mainRows.length, propY+propRows.length);
+  const out=[];
+  for(let y=0;y<H;y++){
+    let line=(mainRows[y]||"");
+    while(line.length<W) line+=".";
+    if(y>=propY&&y<propY+propRows.length){
+      const p=propRows[y-propY];
+      for(let x=0;x<p.length;x++) if(p[x]!==".") line=line.substring(0,propX+x)+p[x]+line.substring(propX+x+1);
+    }
+    out.push(line);
+  }
+  return out;
+}
+
+/* 角色基础形（12×14）：H发 S肤 E眼 M嘴 C衣 A饰边 */
+const AVATAR_ROWS = [
+"....HHHH....",
+"...HHHHHH...",
+"..HHHHHHHH..",
+"..HSSSSSSH..",
+"..SSESSESS..",
+"..SSSSSSSS..",
+"...SSMMSS...",
+"..CCCCCCCC..",
+".ACCCCCCCCA.",
+".SCCCCCCCCS.",
+"..CCCCCCCC..",
+"..CCCCCCCC..",
+"..CCC..CCC..",
+"..CC....CC.."
+];
+const AVATAR_BASE_PAL = {S:"#f2c99a",E:"#1f2937",M:"#b06a5a"};
+
+/* 各原型：调色板 + 道具 */
+const AVA = {
+  A :{pal:{H:"#6b4423",C:"#475569",A:"#f6c453"}, prop:"crate",  label:"SPRITE: MAINLINE WORKER"},
+  B :{pal:{H:"#1f2937",C:"#7c3aed",A:"#fbbf24"}, prop:"crown",  label:"SPRITE: GEAR COLLECTOR"},
+  C :{pal:{H:"#7c5c3e",C:"#166534",A:"#84cc16"}, prop:"house",  label:"SPRITE: VILLAGE DWELLER"},
+  D :{pal:{H:"#334155",C:"#7f1d1d",A:"#f87171"}, prop:"heart",  label:"SPRITE: LOW-HP SURVIVOR"},
+  E :{pal:{H:"#1e293b",C:"#1d4ed8",A:"#38bdf8"}, prop:"book",   label:"SPRITE: MISPLACED SKILL"},
+  BC:{pal:{H:"#4b5563",C:"#3f4662",A:"#94a3b8"}, prop:"bars",   label:"SPRITE: SOCIAL PRISONER"},
+  BE:{pal:{H:"#92400e",C:"#b45309",A:"#fde047"}, prop:"coin",   label:"SPRITE: PAY-TO-WIN PASSERBY"},
+  AD:{pal:{H:"#312e81",C:"#3f3f52",A:"#22d3ee"}, prop:"loop",   label:"SPRITE: LOOP GRINDER"}
+};
+/* 道具（小写字符=道具色系，与角色大写不冲突） */
+const PROPS = {
+  crate:{rows:["yyyyy.","ywwwy.","ywwywy","ywwwy.","yyyyy."],pal:{y:"#b45309",w:"#fbbf24"},dy:5},
+  crown:{rows:["g.g.g","ggggg","goggg",".ggg."],pal:{g:"#fbbf24",o:"#b45309"},dy:6},
+  house:{rows:["..nn..",".nnnn.","nnnnnn",".mmmm.",".mdmm.",".mmmm."],pal:{n:"#b45309",m:"#78350f",d:"#fbbf24"},dy:6},
+  heart:{rows:[".rr.rr.","rrrrrrr","rkkrrrr",".rkrrr.","..rrr..","...r..."],pal:{r:"#f87171",k:"#7f1d1d"},dy:4},
+  book:{rows:["uuuuuu.","uvvvvu.","uvvvvu.","uvvvvu.","uuuuuu.",".uuuu.."],pal:{u:"#1d4ed8",v:"#e0f2fe"},dy:5},
+  bars:{rows:["k.k.k.k","k.k.k.k","k.k.k.k","k.k.k.k","k.k.k.k"],pal:{k:"#94a3b8"},dy:3},
+  coin:{rows:[".ccc.","ccccc","codcc","ccccc",".ccc."],pal:{c:"#fbbf24",o:"#b45309",d:"#92400e"},dy:4},
+  loop:{rows:[".cccc.","c....c","c.i..c","c..i.c","c....c",".cccc."],pal:{c:"#22d3ee",i:"#fbbf24"},dy:4}
+};
+/* 觉醒英雄（终章用）+ 剑 */
+const HERO_ROWS = [
+"....HHHH....",
+"...HHHHHH...",
+"..HHHHHHHH..",
+"..HSSSSSSH..",
+"..SSESSESS..",
+"..SSSSSSSS..",
+"...SSMMSS...",
+"..ACCCCCCA..",
+".AACCCCCCCAA",
+".SCCCCCCCCS.",
+"..CCCCCCCC..",
+"..CCCCCCCC..",
+"..CCC..CCC..",
+"..CC....CC.."
+];
+const HERO_PAL = {H:"#155e75",S:"#f2c99a",E:"#1f2937",M:"#b06a5a",C:"#0e7490",A:"#22d3ee"};
+const SWORD_ROWS = ["...w...","...w...","...w...","...w...","...w...","..owo..","...o..."];
+const SWORD_PAL  = {w:"#e2e8f0",o:"#fbbf24"};
+/* BOSS 骷髅（12×11） */
+const BOSS_ROWS = [
+"..KKKKKK..",
+".KWWWWWWK.",
+"KWWWWWWWWK",
+"KWKKWWKKWK",
+"KWWWWWWWWK",
+"KWWWKKWWWK",
+"KWWWWWWWWK",
+".KWWWWWWK.",
+"..KWKWKW..",
+"..KWWWWK..",
+"...KKKK..."
+];
+const BOSS_PAL = {K:"#3f1d2b",W:"#d8c7d8"};
+/* 队友小头像 */
+function miniAvatar(key,scale){
+  const a=AVA[key];
+  const pal=Object.assign({},AVATAR_BASE_PAL,a.pal);
+  return px(AVATAR_ROWS,pal,scale);
+}
+function archAvatar(key,scale){
+  const a=AVA[key];
+  const prop=PROPS[a.prop];
+  const merged=pxCompose(AVATAR_ROWS,prop.rows,14,prop.dy);
+  const pal=Object.assign({},AVATAR_BASE_PAL,a.pal,prop.pal);
+  return px(merged,pal,scale);
+}
+function heroSprite(scale){
+  const merged=pxCompose(HERO_ROWS,SWORD_ROWS,14,3);
+  const pal=Object.assign({},HERO_PAL,SWORD_PAL);
+  return px(merged,pal,scale);
+}
+function bossSprite(scale){ return px(BOSS_ROWS,BOSS_PAL,scale); }
+
+/* 板块像素图标（8×8，金色系） */
+const ICON_GOLD = "#fbbf24", ICON_DIM = "#7a5b16";
+const ICONS = {
+  mail:["xxxxxx..","x....x..","x.xxx.x.","x.x..x..","x.xxx.x.","x....x..","xxxxxx..","........"],
+  id:["xxxxxxxx","x......x","x.xx..x.","x......x","x.x..xx.","x......x","xxxxxxxx","........"],
+  panel:["......x.","....xxx.","....xxx.","..xxxxx.","..xxx...","xxxx....","xxx.....","........"],
+  book:["xx...xx.","x.x.x.x.","x..x..x.","x.....x.","x..x..x.","x.x.x.x.","xx...xx.","........"],
+  check:["xx....xx","xx....xx","........","xx....xx","xx....xx","........","xx....xx","xx....xx"],
+  quest:["...xx...","...xx...","...xx...","...xx...","........","...xx...","...xx...","........"],
+  flag:[".xxxx...",".xxxxx..",".xxxxxx.",".xxxx...",".xx.....",".xx.....",".xx.....",".xx....."],
+  skull:["..xxxx..",".xxxxxx.","x.xxxx.x","x.xxxx.x",".xxxxxx.",".x.xx.x.","..xxxx..","........"],
+  team:["..xx.xx.","..xx.xx.","..xxxx..","..xx.xx.",".xxxxxx.","x.xxxx.x","x.xxxx.x","........"],
+  next:["xxx..xxx","x.x..x.x","x.x..x.x","xxx..xxx","........","x..xx..x","x.xxxx.x","x......x"]
+};
+function icon(name,size){
+  return px(ICONS[name],{x:ICON_GOLD},size||3);
+}
+
+/* ================================================================
+   状态
+================================================================ */
+let cur = 0;
+let answers = new Array(QUESTIONS.length).fill(-1);
+let lastResult = null;
+
+const $ = id => document.getElementById(id);
+const screens = ["screen-start","screen-quiz","screen-loading","screen-result"];
+function show(id){
+  screens.forEach(s=>$(s).classList.add("hidden"));
+  $(id).classList.remove("hidden");
+  window.scrollTo(0,0);
+}
+
+/* ================================================================
+   计分：每维度 = 实得分 / 该维度理论满分 × 100
+================================================================ */
+function computeScores(){
+  const earned = {A:0,B:0,C:0,D:0,E:0};
+  const maxP = {A:0,B:0,C:0,D:0,E:0};
+  QUESTIONS.forEach(function(q,qi){
+    const ai = answers[qi];
+    DIM_KEYS.forEach(function(d){
+      let best = 0;
+      q.o.forEach(function(o){ if(o.s[d]!==undefined && o.s[d]>best) best = o.s[d]; });
+      maxP[d]+=best;
+      const sel = q.o[ai];
+      if(sel && sel.s[d]!==undefined) earned[d]+=sel.s[d];
+    });
+  });
+  const scores = {};
+  DIM_KEYS.forEach(function(d){
+    let v = maxP[d]>0 ? (earned[d]/maxP[d])*100 : 50;
+    scores[d] = Math.max(0, Math.min(100, Math.round(v)));
+  });
+  return scores;
+}
+function decideArchetype(scores){
+  const sorted = DIM_KEYS.slice().sort(function(a,b){return scores[a]-scores[b];});
+  const d1 = sorted[0], d2 = sorted[1];
+  const diff = scores[d2]-scores[d1];
+  let key, mixed=false;
+  if(diff<=MIX_THRESHOLD){
+    const pair = [d1,d2].sort().join("");
+    if(COMBO_MAP[pair]){ key = COMBO_MAP[pair]; mixed=true; }
+    else key = SINGLE_MAP[d1];
+  } else key = SINGLE_MAP[d1];
+  return {key:key, d1:d1, d2:d2, diff:diff, mixed:mixed};
+}
+
+/* ================================================================
+   答题页渲染
+================================================================ */
+function renderQuestion(){
+  const q = QUESTIONS[cur];
+  $("qnum").textContent = "Q " + String(cur+1).padStart(2,"0") + " / 36";
+  $("hpfill").style.width = (cur/QUESTIONS.length*100) + "%";
+  $("btn-back").disabled = cur===0;
+
+  const card = $("qcard");
+  card.innerHTML = "";
+  card.style.animation = "none";
+  void card.offsetWidth;
+  card.style.animation = "";
+
+  const tag = document.createElement("div");
+  tag.className="qtag"; tag.textContent = "// 行为样本采集 #" + String(cur+1).padStart(2,"0");
+  const qt = document.createElement("div");
+  qt.className="qtext"; qt.textContent = q.q;
+  const qs = document.createElement("div");
+  qs.className="qsub"; qs.textContent = "◈ " + q.sub;
+  const opts = document.createElement("div");
+  opts.className="opts";
+  q.o.forEach(function(o,i){
+    const b = document.createElement("button");
+    b.className="opt";
+    b.innerHTML = '<span class="key">'+String.fromCharCode(65+i)+'</span><span>'+o.t+'</span>';
+    b.onclick = function(){ select(i,b); };
+    opts.appendChild(b);
+  });
+  card.append(tag,qt,qs,opts);
+}
+
+let lock=false;
+function select(i,btn){
+  if(lock) return;
+  lock=true;
+  answers[cur]=i;
+  btn.classList.add("selected");
+  document.querySelectorAll(".opt").forEach(function(b){b.style.pointerEvents="none";});
+  setTimeout(function(){
+    lock=false;
+    if(cur < QUESTIONS.length-1){ cur++; renderQuestion(); }
+    else { startAnalysis(); }
+  }, 240);
+}
+
+$("btn-back").onclick = function(){
+  if(cur===0) return;
+  cur--; answers[cur]=-1; renderQuestion();
+};
+
+document.addEventListener("keydown", function(e){
+  if($("screen-quiz").classList.contains("hidden")) return;
+  const map={"1":0,"2":1,"3":2,"4":3,"a":0,"b":1,"c":2,"d":3};
+  const i = map[e.key.toLowerCase()];
+  if(i!==undefined){
+    const btns = document.querySelectorAll("#qcard .opt");
+    if(btns[i]) btns[i].click();
+  }
+});
+
+/* ================================================================
+   分析页（拟真终端）
+================================================================ */
+function startAnalysis(){
+  show("screen-loading");
+  $("hpfill").style.width = "100%";
+  const lines = [
+    "&gt; 读取角色存档 ............ OK",
+    "&gt; 校验 36 条行为样本 ...... OK",
+    "&gt; 调取 14 项心理机制 ...... OK",
+    "&gt; 计算五维属性面板 ........ OK",
+    "&gt; 比对 8 类 NPC 原型库 .... 锁定目标",
+    "&gt; 生成专属通关攻略 ........ <span class='caret'></span>"
+  ];
+  const t = $("terminal");
+  t.innerHTML = "";
+  lines.forEach(function(txt){
+    const d=document.createElement("div");
+    d.className="tline"; d.innerHTML=txt;
+    t.appendChild(d);
+  });
+  const els = t.querySelectorAll(".tline");
+  els.forEach(function(el,i){ setTimeout(function(){el.classList.add("show");}, 120 + i*360); });
+  setTimeout(renderResult, 120 + lines.length*360 + 650);
+}
+
+/* ================================================================
+   雷达图（原生SVG，无依赖）
+================================================================ */
+function radarSVG(values){
+  const cx=180, cy=165, R=115;
+  const ang = function(i){ return (-90 + i*72) * Math.PI/180; };
+  const pt = function(i,r){ return [cx + r*Math.cos(ang(i)), cy + r*Math.sin(ang(i))]; };
+  let s = '<svg viewBox="0 0 360 330" xmlns="http://www.w3.org/2000/svg">';
+  [20,40,60,80,100].forEach(function(lv){
+    const pts = DIM_KEYS.map(function(d,i){ return pt(i, R*lv/100).map(function(n){return n.toFixed(1);}).join(","); }).join(" ");
+    s += '<polygon points="'+pts+'" fill="'+(lv===100?'rgba(34,211,238,.03)':'none')+'" stroke="#1c2a3d" stroke-width="1"/>';
+  });
+  DIM_KEYS.forEach(function(d,i){
+    const p=pt(i,R);
+    s += '<line x1="'+cx+'" y1="'+cy+'" x2="'+p[0].toFixed(1)+'" y2="'+p[1].toFixed(1)+'" stroke="#1c2a3d" stroke-width="1"/>';
+  });
+  s += '<polygon id="radar-poly" points="'+DIM_KEYS.map(function(){return cx+","+cy;}).join(" ")+'" fill="rgba(251,191,36,.22)" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 8px rgba(251,191,36,.5))"/>';
+  DIM_KEYS.forEach(function(d,i){
+    s += '<circle id="radar-dot-'+i+'" cx="'+cx+'" cy="'+cy+'" r="3.5" fill="#fbbf24" stroke="#06090f" stroke-width="1"/>';
+  });
+  const anchors=["middle","start","start","end","end"];
+  DIM_KEYS.forEach(function(d,i){
+    const p=pt(i,R+26);
+    s += '<text x="'+p[0].toFixed(1)+'" y="'+(p[1]+4).toFixed(1)+'" text-anchor="'+anchors[i]+'" fill="#9fb2c8" font-size="12" font-weight="700">'+DIMS[d].name+'</text>';
+    s += '<text id="radar-val-'+i+'" x="'+p[0].toFixed(1)+'" y="'+(p[1]+20).toFixed(1)+'" text-anchor="'+anchors[i]+'" fill="#fbbf24" font-size="11" font-family="monospace">'+values[d]+'</text>';
+  });
+  s += '</svg>';
+  return s;
+}
+function animateRadar(values){
+  const poly = document.getElementById("radar-poly");
+  if(!poly) return;
+  const cx=180, cy=165, R=115;
+  const ang = function(i){ return (-90 + i*72) * Math.PI/180; };
+  const target = DIM_KEYS.map(function(d){ return values[d]; });
+  const t0 = performance.now(), dur=900;
+  function frame(t){
+    const p = Math.min(1,(t-t0)/dur);
+    const e = 1-Math.pow(1-p,3);
+    const pts = target.map(function(v,i){
+      const r = R*v/100*e;
+      return (cx + r*Math.cos(ang(i))).toFixed(1)+","+(cy + r*Math.sin(ang(i))).toFixed(1);
+    });
+    poly.setAttribute("points", pts.join(" "));
+    DIM_KEYS.forEach(function(d,i){
+      const dot=document.getElementById("radar-dot-"+i);
+      if(dot){ dot.setAttribute("cx",pts[i].split(",")[0]); dot.setAttribute("cy",pts[i].split(",")[1]); }
+    });
+    if(p<1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+function barColor(v){
+  if(v<40) return "#f87171";
+  if(v<60) return "#fb923c";
+  if(v<75) return "#22d3ee";
+  return "#4ade80";
+}
+/* ================================================================
+   结果页 · 通关攻略式渲染
+================================================================ */
+function bridge(html){
+  return '<div class="bridge"><span class="arr">▼ ▼ ▼</span>'+html+'</div>';
+}
+
+function renderResult(){
+  const scores = computeScores();
+  const arch = decideArchetype(scores);
+  const data = ARCHETYPES[arch.key];
+  const avg = Math.round(DIM_KEYS.reduce(function(s,d){return s+scores[d];},0)/5);
+  const lv = levelOf(avg);
+  const weakest = DIM_KEYS.slice().sort(function(a,b){return scores[a]-scores[b];})[0];
+  const second = DIM_KEYS.slice().sort(function(a,b){return scores[a]-scores[b];})[1];
+  const rank = Math.max(5, Math.round(avg*0.9));
+  const today = new Date().toLocaleDateString("zh-CN");
+  lastResult = {scores:scores, arch:arch, data:data, avg:avg, lv:lv, weakest:weakest};
+
+  let h = "";
+
+  /* ── 开场：系统邮件 ── */
+  h += '<div class="panel mail">'
+    + '<div class="mail-head"><span>FROM: EARTH ONLINE 系统管理员</span><span>TO: 正在觉醒的你</span><span>DATE: '+today+'</span></div>'
+    + '<div class="mail-body">检测到本账号在 <b>'+DIMS[weakest].name+'</b> 维度出现长期卡关，系统已生成一份<b>专属通关攻略</b>。<br>'
+    + '请注意：这不是一份「你有问题」的报告——这是一份<b>「你的隐藏属性被放错了位置」的攻略</b>。<br>接下来共 8 个板块，按通关顺序排列。慢慢看，你在攻略里看到的一切，都已经在你的存档里存在很多年了。</div></div>';
+
+  h += bridge("诊断数据载入完成 —— 打开你的<em>身份诊断书</em>");
+
+  /* ── STAGE 01 诊断书 ── */
+  h += '<div class="panel diag-card">'
+    + '<div class="sec"><span class="pixicon">'+icon("id")+'</span><span class="no">STAGE 01 / 08</span></div>'
+    + '<div class="avatar-stage"><span class="pixel">'+archAvatar(arch.key,6)+'</span><div class="avatar-name-tag">'+AVA[arch.key].label+'</div></div>'
+    + '<div class="diag-tag">◆ NPC IDENTITY DIAGNOSIS ◆</div>'
+    + '<div class="arch-name">'+data.name+'</div>'
+    + '<div class="arch-desc">'+data.desc+'</div>'
+    + '<div class="arch-line">典型台词：'+data.line+'</div>'
+    + '<div><span class="level-badge '+lv.cls+'">'+lv.text+'</span></div>'
+    + '<div class="awaken-line">整体觉醒度 AVG '+avg+' / 100 · '+data.tag+'</div>';
+  if(arch.mixed){
+    h += '<div class="mixed-note">⚡ 混合型判定：你在「'+DIMS[arch.d1].name+'」和「'+DIMS[arch.d2].name+'」两个关卡同时卡关（分差仅 '+arch.diff+'）。双重陷阱叠加，但双倍卡关也意味着双倍解法——攻略里两份都给你。</div>';
+  } else if(arch.diff<=15){
+    h += '<div class="mixed-note">◈ 检测到混合倾向：你同时带有「'+ARCHETYPES[SINGLE_MAP[arch.d2]].name+'」的影子，副陷阱也不轻。</div>';
+  }
+  h += '<div class="hope-box"><div class="hb-t">◆ 隐藏优势 · HIDDEN STAT</div><p>'+data.hope+'</p></div></div>';
+
+  h += bridge("身份确认完毕 —— 接下来，打开你的<em>五维属性面板</em>。数据不会说谎");
+
+  /* ── STAGE 02 属性面板 ── */
+  h += '<div class="panel">'
+    + '<div class="sec"><span class="pixicon">'+icon("panel")+'</span><span class="no">STAGE 02 / 08</span><h2>五维属性面板</h2><span class="sub">STAT PANEL</span></div>'
+    + '<div class="sysmsg">&gt; SYSTEM：金色区域是你的玩家属性覆盖范围。<em>凹进去的地方，就是你被卡住的那一关</em>——本次为「'+DIMS[weakest].name+'」</div>'
+    + '<div class="radar-box">'+radarSVG(scores)+'</div>'
+    + '<div class="dim-bars">';
+  DIM_KEYS.forEach(function(d){
+    const v=scores[d];
+    h += '<div class="drow"><div class="drow-top"><span class="dname">'+DIMS[d].name+'</span><span class="dval" style="color:'+barColor(v)+'">'+v+' / 100</span></div>'
+      + '<div class="dbar"><div class="fill" data-w="'+v+'" style="background:'+barColor(v)+'"></div></div>'
+      + '<div class="dtrait">'+(v<50 ? "▼ "+DIMS[d].low : "▲ "+DIMS[d].high)+'</div></div>';
+  });
+  h += '</div></div>';
+
+  h += bridge("面板读数完毕 ——「"+DIMS[weakest].name+"」是你凹陷最深处。进入<em>陷阱图鉴</em>，看看它到底怎么运作");
+
+  /* ── STAGE 03 陷阱图鉴 ── */
+  h += '<div class="panel">'
+    + '<div class="sec"><span class="pixicon">'+icon("book")+'</span><span class="no">STAGE 03 / 08</span><h2>陷阱图鉴</h2><span class="sub">TRAP CODEX</span></div>'
+    + '<div class="sysmsg">&gt; SYSTEM：图鉴条目已解锁 ——「'+data.name+'」</div>'
+    + '<div class="deep-text">'+data.deep+'</div></div>';
+
+  h += bridge("图鉴机制已明确 —— 但纸面机制不算数，去现实里<em>对一对症状</em>");
+
+  /* ── STAGE 04 症状实录（可点击确认） ── */
+  h += '<div class="panel">'
+    + '<div class="sec"><span class="pixicon">'+icon("check")+'</span><span class="no">STAGE 04 / 08</span><h2>症状实录</h2><span class="sub">SYMPTOM LOG</span></div>'
+    + '<div class="sysmsg">&gt; SYSTEM：点击命中的条目进行确认。中 <em>3 条以上</em>即为本体</div>'
+    + '<ul class="gamelist" id="sym-list">'+data.list.map(function(x,i){return '<li data-n="'+String(i+1).padStart(2,"0")+'">'+x+'</li>';}).join("")+'</ul>'
+    + '<div class="hit-counter">已确认 <b id="hit-num">0</b> / 5</div></div>';
+
+  h += bridge("对上了也别慌 —— 能对上，说明解药也从这里开始。领取你的<em>新手任务</em>");
+
+  /* ── STAGE 05 新手任务链（可点击打卡） ── */
+  h += '<div class="panel">'
+    + '<div class="sec"><span class="pixicon">'+icon("quest")+'</span><span class="no">STAGE 05 / 08</span><h2>破局新手任务</h2><span class="sub">FIRST QUESTS</span></div>'
+    + '<div class="sysmsg">&gt; SYSTEM：今日可执行，不需要任何准备。完成后点击打卡</div>'
+    + '<div class="action-list" id="quest-list">'+data.actions.map(function(x,i){return '<div class="action"><span class="an">QUEST '+String(i+1).padStart(2,"0")+'</span><div class="at">'+x+'</div></div>';}).join("")+'</div></div>';
+
+  h += bridge("三个任务只是热身 —— 真正的转职，要按这张<em>升级路线图</em>走");
+
+  /* ── STAGE 06 升级路线图 ── */
+  h += '<div class="panel">'
+    + '<div class="sec"><span class="pixicon">'+icon("flag")+'</span><span class="no">STAGE 06 / 08</span><h2>玩家升级路线图</h2><span class="sub">LEVEL ROADMAP</span></div>'
+    + '<div class="roadmap">'
+    + '<div class="rm-stage"><div class="rm-t">▸ 短期 · 1 周</div><div class="rm-d">'+data.roadmap.week+'</div></div>'
+    + '<div class="rm-stage gold"><div class="rm-t">▸ 中期 · 3 个月</div><div class="rm-d">'+data.roadmap.month+'</div></div>'
+    + '<div class="rm-stage purple"><div class="rm-t">▸ 长期 · 1 年</div><div class="rm-d">'+data.roadmap.year+'</div></div>'
+    + '</div></div>';
+
+  h += bridge("路线图上有一只你迟早要单挑的BOSS —— 提前认识一下它的<em>技能机制</em>");
+
+  /* ── STAGE 07 BOSS 战 ── */
+  h += '<div class="panel">'
+    + '<div class="sec"><span class="pixicon">'+icon("skull")+'</span><span class="no">STAGE 07 / 08</span><h2>本关BOSS</h2><span class="sub">FINAL BOSS</span></div>'
+    + '<div class="boss-box"><div class="boss-head"><span class="bs pixel">'+bossSprite(4)+'</span><span class="bn">'+ (function(){const m=data.boss.match(/^「([^」]+)」/); return m?m[1]:"隐藏BOSS";})() +'</span><span class="btag">BOSS · '+data.name.slice(0,2)+'</span></div>'
+    + '<p>'+data.boss+'</p>'
+    + '<div class="weakness">◈ 弱点提示 WEAKNESS：'+data.weakness+'</div></div></div>';
+
+  h += bridge("BOSS机制已记录 —— 单挑太难的话，没人规定玩家必须Solo。去<em>组队大厅</em>看看");
+
+  /* ── STAGE 08 组队大厅 ── */
+  const teamKey = (function(){ for(const k in ARCHETYPES){ if(ARCHETYPES[k].name===data.team) return k; } return "D"; })();
+  h += '<div class="panel">'
+    + '<div class="sec"><span class="pixicon">'+icon("team")+'</span><span class="no">STAGE 08 / 08</span><h2>组队大厅</h2><span class="sub">PARTY UP</span></div>'
+    + '<div class="team-box"><div class="pixel" style="flex:none">'+miniAvatar(teamKey,4)+'</div>'
+    + '<div><div class="tm-name">🤝 推荐组队：'+data.team+'</div><p>'+data.teamWhy+'</p>'
+    + '<p style="margin-top:10px;font-size:13px;color:#7d8ba0">把这份攻略发给TA，问问TA测出来是什么原型。</p></div></div></div>';
+
+  h += bridge("攻略到此全部解锁 —— 但每个通关的玩家都知道：真正的结局，是<em>片尾字幕之后的那一行字</em>");
+
+  /* ── 终章 · 觉醒宣言 ── */
+  h += '<div class="panel final-card">'
+    + '<div class="final-tag">◆ EPILOGUE ◆</div>'
+    + '<div class="avatar-stage"><span class="pixel">'+heroSprite(6)+'</span><div class="avatar-name-tag">SPRITE: PLAYER (YOU, SOON)</div></div>'
+    + '<div class="final-title">觉醒宣言</div>'
+    + '<div class="final-text">你刚刚用几分钟，完整看完了一份关于自己的攻略——<b>这件事本身，就是NPC做不到的</b>。NPC从不阅读自己的属性面板，更不会为了一份攻略认真到最后一页。<br>'
+    + '你被困在「'+DIMS[weakest].name+'」这一关，不是因为你弱，而是因为<b>你的满级属性一直被放错了位置</b>。接下来只是搬运，不是重生。</div>'
+    + '<div class="declare">我确认接管这个角色。<br>从此刻起——我的任务我自己选，我的地图我自己开，我的血条我自己管。<br>就算卡关，也是<b>我自己的</b>存档。<span class="sig">—— 玩家（觉醒中） · '+today+'</span></div>'
+    + '<div class="stamp-zone"><button class="btn gold" id="btn-stamp">🖋 盖章确认转职</button><div class="seal" id="seal">觉醒<small>AWAKENED</small></div></div>'
+    + '<div class="final-stats">'
+    + '<div class="fstat"><b>'+avg+'%</b>整体觉醒度</div>'
+    + '<div class="fstat"><b>TOP '+rank+'%</b>NPC 中的觉醒进度</div>'
+    + '<div class="fstat"><b>8/8</b>攻略板块已解锁</div>'
+    + '</div></div>';
+
+  /* 操作区 */
+  h += '<div class="result-actions">'
+    + '<button class="btn gold" id="btn-copy">📋 复制我的结果</button>'
+    + '<button class="btn" id="btn-restart">↻ 重新测一次</button>'
+    + '</div>';
+
+  const box = $("screen-result");
+  box.innerHTML = h;
+  show("screen-result");
+
+  /* 动画启动 */
+  animateRadar(scores);
+  setTimeout(function(){
+    box.querySelectorAll(".dbar .fill").forEach(function(f){ f.style.width = f.dataset.w+"%"; });
+  },100);
+
+  /* 交互：症状确认 */
+  const symList = $("sym-list"), hitNum = $("hit-num");
+  let hitToastShown=false;
+  if(symList){
+    symList.querySelectorAll("li").forEach(function(li){
+      li.onclick = function(){
+        li.classList.toggle("hit");
+        const n = symList.querySelectorAll("li.hit").length;
+        hitNum.textContent = n;
+        if(n>=3 && !hitToastShown){ hitToastShown=true; toast("SYSTEM：图鉴匹配成功 —— 确认本体"); }
+      };
+    });
+  }
+  /* 交互：任务打卡 */
+  const questList = $("quest-list");
+  let questToastShown=false;
+  if(questList){
+    questList.querySelectorAll(".action").forEach(function(a){
+      a.onclick = function(){
+        a.classList.toggle("done");
+        const n = questList.querySelectorAll(".action.done").length;
+        if(n===3 && !questToastShown){ questToastShown=true; toast("SYSTEM：新手任务链完成 ✓ 获得「破局者」称号"); }
+      };
+    });
+  }
+  /* 交互：盖章 */
+  $("btn-stamp").onclick = function(){
+    const seal=$("seal");
+    seal.classList.add("stamped");
+    this.disabled=true;
+    this.style.opacity=".4";
+    this.textContent="✓ 已确认转职";
+    setTimeout(function(){ toast("SYSTEM：身份已变更 —— NPC → 玩家（预备役）"); },380);
+  };
+  $("btn-copy").onclick = copyResult;
+  $("btn-restart").onclick = restart;
+}
+
+/* ================================================================
+   分享 / 复制 / 重开
+================================================================ */
+function buildShareText(){
+  const r = lastResult;
+  const url = (SHARE_LINK && SHARE_LINK.trim()) ? SHARE_LINK.trim()
+           : (location.href && location.href.indexOf("file:")!==0 ? location.href : "");
+  let txt = "【地球Online·NPC身份诊断】\n"
+    + "我的身份："+r.data.name+"\n"
+    + "觉醒度："+r.lv.text+"（"+r.avg+"%）\n"
+    + "最卡我的关卡："+DIMS[r.weakest].name+"\n"
+    + "隐藏优势："+r.data.hope+"\n"
+    + "——你被什么困在NPC身份里？\n"
+    + "36道题，测测你被困在哪一关";
+  if(url) txt += "\n" + url;
+  return txt;
+}
+function copyResult(){
+  const txt = buildShareText();
+  const done = function(){ toast("已复制，去粘贴发帖吧"); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(done).catch(function(){ fallbackCopy(txt,done); });
+  } else fallbackCopy(txt,done);
+}
+function fallbackCopy(txt,done){
+  const ta=document.createElement("textarea");
+  ta.value=txt; ta.style.cssText="position:fixed;opacity:0";
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); done(); }
+  catch(e){ toast("复制失败，请长按结果页手动复制"); }
+  document.body.removeChild(ta);
+}
+let toastTimer=null;
+function toast(msg){
+  const t=$("toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){ t.classList.remove("show"); },2400);
+}
+function restart(){
+  cur=0; answers.fill(-1); lastResult=null;
+  $("hpfill").style.width="0%";
+  renderQuestion();
+  show("screen-quiz");
+}
+
+/* ================================================================
+   启动
+================================================================ */
+$("btn-start").onclick = function(){ cur=0; answers.fill(-1); renderQuestion(); show("screen-quiz"); };
+</script>
+</body>
+</html>
