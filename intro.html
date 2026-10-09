@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>地球Online · NPC身份诊断 — 产品介绍</title>
+<style>
+  :root{
+    --bg:#06090f; --panel:#0c1320; --panel2:#0e1728; --line:#1c2a3d;
+    --cyan:#22d3ee; --gold:#fbbf24; --purple:#a78bfa; --red:#f87171;
+    --green:#4ade80; --orange:#fb923c; --text:#dce8f5; --dim:#6b7f99;
+    --mono:"Cascadia Code","JetBrains Mono",Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{-webkit-tap-highlight-color:transparent;}
+  body{background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    line-height:1.7;overflow-x:hidden;}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(ellipse 60% 40% at 50% -10%, rgba(34,211,238,.10), transparent 60%),
+      radial-gradient(ellipse 40% 30% at 90% 110%, rgba(167,139,250,.08), transparent 60%),
+      radial-gradient(ellipse 40% 30% at 5% 100%, rgba(251,191,36,.05), transparent 60%);}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.35;
+    background:repeating-linear-gradient(0deg, transparent 0 3px, rgba(0,0,0,.12) 3px 4px);}
+  .wrap{position:relative;z-index:2;max-width:860px;margin:0 auto;padding:0 18px 70px;}
+
+  .logo-mini{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:6px;}
+  .btn{display:inline-block;cursor:pointer;user-select:none;text-decoration:none;
+    font-family:var(--mono);font-size:15px;letter-spacing:2px;color:var(--cyan);
+    background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.55);padding:14px 38px;
+    transition:all .18s ease;
+    clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);}
+  .btn:hover{background:rgba(34,211,238,.18);box-shadow:0 0 22px rgba(34,211,238,.35);color:#fff;}
+  .btn.gold{color:var(--gold);border-color:rgba(251,191,36,.55);background:rgba(251,191,36,.08);}
+  .btn.gold:hover{background:rgba(251,191,36,.18);box-shadow:0 0 22px rgba(251,191,36,.3);}
+  .btn.ghost{color:var(--dim);border-color:var(--line);background:transparent;}
+  .btn.ghost:hover{color:var(--cyan);border-color:var(--cyan);box-shadow:none;}
+
+  /* HERO */
+  .hero{text-align:center;padding:11vh 10px 6vh;animation:fadein .6s ease;}
+  .logo-mini{margin-bottom:26px;}
+  .big-title{font-size:clamp(44px,11vw,82px);font-weight:900;letter-spacing:4px;line-height:1.08;
+    color:#fff;text-shadow:0 0 30px rgba(34,211,238,.55),0 0 80px rgba(34,211,238,.25);}
+  .big-title .on{color:var(--cyan);}
+  .sub-title{margin-top:14px;font-family:var(--mono);font-size:clamp(15px,3.6vw,20px);color:var(--gold);letter-spacing:8px;}
+  .tagline{margin:30px auto 0;max-width:560px;font-size:16px;line-height:2;color:#c6d5e6;}
+  .tagline b{color:var(--cyan);font-weight:700;}
+  .chips{display:flex;justify-content:center;gap:10px;margin:34px 0 4px;flex-wrap:wrap;}
+  .chip{font-family:var(--mono);font-size:12px;color:var(--text);border:1px solid var(--line);
+    background:var(--panel);padding:8px 16px;letter-spacing:1px;}
+  .chip b{color:var(--gold);font-weight:700;font-size:14px;}
+  .cta-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:38px;}
+
+  /* SECTION */
+  .section{padding:40px 0;border-top:1px solid var(--line);}
+  .sec-head{display:flex;align-items:center;gap:14px;margin-bottom:8px;}
+  .sec-no{font-family:var(--mono);font-size:12px;color:var(--gold);letter-spacing:2px;}
+  .sec-title{font-size:clamp(22px,5vw,28px);font-weight:800;color:#fff;letter-spacing:1px;}
+  .sec-sub{font-family:var(--mono);font-size:12px;color:var(--dim);margin-left:auto;letter-spacing:1px;}
+  .lead{font-size:15.5px;line-height:2.1;color:#b8c8da;margin:18px 0 26px;}
+  .lead b{color:var(--gold);font-weight:700;}
+  .lead .cy{color:var(--cyan);}
+
+  /* what-is bullets */
+  .points{display:grid;gap:14px;margin-top:6px;}
+  .point{display:flex;gap:14px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);
+    padding:16px 18px;}
+  .point .k{flex:none;font-family:var(--mono);font-size:12px;color:var(--cyan);border:1px solid rgba(34,211,238,.5);
+    padding:4px 9px;margin-top:2px;letter-spacing:1px;}
+  .point .t{font-size:14.5px;line-height:1.9;}
+  .point .t b{color:var(--gold);}
+
+  /* DIMS grid */
+  .dims{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;}
+  .dim{background:var(--panel);border:1px solid var(--line);padding:18px 18px 20px;position:relative;}
+  .dim::before{content:"";position:absolute;left:0;top:0;width:3px;height:100%;background:linear-gradient(var(--cyan),var(--purple));}
+  .dim .code{font-family:var(--mono);font-size:13px;color:var(--cyan);letter-spacing:2px;}
+  .dim .name{font-size:17px;font-weight:800;color:#fff;margin:6px 0 10px;letter-spacing:1px;}
+  .dim .desc{font-size:13.5px;line-height:1.85;color:var(--dim);}
+
+  /* ARCHETYPES */
+  .arch-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;}
+  .arch{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);padding:18px;
+    transition:all .15s ease;}
+  .arch:hover{border-color:rgba(251,191,36,.5);transform:translateY(-3px);box-shadow:0 8px 30px rgba(0,0,0,.4);}
+  .arch .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px;}
+  .arch .name{font-size:16px;font-weight:800;color:var(--gold);letter-spacing:.5px;line-height:1.4;}
+  .arch .code{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:1px;flex:none;}
+  .arch .desc{font-size:13.5px;line-height:1.85;color:#b8c8da;}
+  .arch .tag{font-family:var(--mono);font-size:11px;color:var(--purple);margin-top:10px;letter-spacing:1px;}
+
+  /* STEPS */
+  .steps{display:flex;flex-direction:column;gap:0;margin-top:8px;}
+  .step{display:flex;gap:18px;padding:18px 0;border-bottom:1px dashed var(--line);align-items:flex-start;}
+  .step:last-child{border-bottom:none;}
+  .step .num{flex:none;width:40px;height:40px;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:16px;font-weight:700;color:var(--cyan);
+    border:1px solid rgba(34,211,238,.55);background:rgba(34,211,238,.06);}
+  .step .body .h{font-size:16px;font-weight:700;color:#fff;margin-bottom:5px;}
+  .step .body .t{font-size:14px;line-height:1.85;color:var(--dim);}
+
+  /* features */
+  .feat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:6px;}
+  .feat{background:var(--panel);border:1px solid rgba(74,222,128,.25);padding:18px;}
+  .feat .h{font-size:15px;font-weight:800;color:var(--green);margin-bottom:8px;letter-spacing:.5px;}
+  .feat .t{font-size:13.5px;line-height:1.85;color:#c3d6c8;}
+
+  /* final CTA */
+  .cta-box{text-align:center;margin-top:10px;padding:46px 20px;
+    border:1px solid rgba(34,211,238,.45);background:linear-gradient(180deg,rgba(34,211,238,.06),var(--panel));
+    clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px);}
+  .cta-box .ft{font-family:var(--mono);font-size:12px;color:var(--cyan);letter-spacing:5px;margin-bottom:16px;}
+  .cta-box .fh{font-size:clamp(22px,5vw,30px);font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:14px;
+    text-shadow:0 0 26px rgba(34,211,238,.5);}
+  .cta-box .fp{font-size:14.5px;color:#c6d5e6;margin-bottom:26px;line-height:1.9;}
+
+  footer{margin-top:40px;text-align:center;font-family:var(--mono);font-size:11px;color:#33425a;letter-spacing:1px;line-height:2;}
+
+  @keyframes fadein{from{opacity:0}to{opacity:1}}
+  @media(max-width:480px){.sec-sub{display:none;} .cta-row .btn{width:100%;text-align:center;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== HERO ===== -->
+  <header class="hero">
+    <div class="logo-mini">EARTH ONLINE · NPC DIAGNOSTIC</div>
+    <h1 class="big-title">地球<span class="on">Online</span></h1>
+    <div class="sub-title">NPC 身份诊断</div>
+    <p class="tagline">你是在玩地球Online，还是被地球Online玩？<br>
+      <b>36</b> 道场景题，测出你被什么困在了 NPC 身份里。</p>
+    <div class="chips">
+      <span class="chip"><b>36</b> 道场景题</span>
+      <span class="chip"><b>5</b> 维属性面板</span>
+      <span class="chip"><b>8</b> 种 NPC 原型</span>
+    </div>
+    <div class="cta-row">
+      <a class="btn" href="index.html">▶ 进入诊断</a>
+      <a class="btn gold" href="poster.png">下载分享长图</a>
+    </div>
+  </header>
+
+  <!-- ===== 这是什么 ===== -->
+  <section class="section">
+    <div class="sec-head"><span class="sec-no">01</span><span class="sec-title">这到底是什么</span></div>
+    <p class="lead">「地球Online · NPC身份诊断」是一份把 <span class="cy">自我觉察</span> 做成游戏的测试。
+      它借用游戏术语——<b>NPC（非玩家角色）</b> 与 <b>玩家</b>——来照见一个扎心的问题：
+      你的人生，有多少是系统替你排的，又有多少是你自己选的？</p>
+    <div class="points">
+      <div class="point"><span class="k">隐喻</span><span class="t">把「按部就班的人生」翻译成游戏语言：主线任务、装备栏、血条、副本、BOSS——让你一眼看见自己卡在哪一关。</span></div>
+      <div class="point"><span class="k">诊断</span><span class="t">不是算命，是一份<b>带隐藏优势的行动报告</b>。每个「你是哪种 NPC」后面，都附着你最被低估的真实天赋。</span></div>
+      <div class="point"><span class="k">出口</span><span class="t">报告尽头不是结论，是一张可执行的 <b>觉醒路线</b>：从「看清」走到「开始动」。</span></div>
+    </div>
+  </section>
+
+  <!-- ===== 五维属性 ===== -->
+  <section class="section">
+    <div class="sec-head"><span class="sec-no">02</span><span class="sec-title">五维属性面板</span><span class="sec-sub">5 DIMENSIONS</span></div>
+    <p class="lead">系统从五个维度扫描你的人生运行方式，每个维度都是一道「你是被系统操控，还是自己掌舵」的切面。</p>
+    <div class="dims">
+      <div class="dim"><div class="code">A · TASK</div><div class="name">任务自主性</div><div class="desc">主线任务的引擎，是谁点燃的？是系统派发，还是你自己点燃？</div></div>
+      <div class="dim"><div class="code">B · IDENTITY</div><div class="name">身份解绑度</div><div class="desc">你靠职位、装备、标签定义自己，还是能剥掉标签依然认识自己？</div></div>
+      <div class="dim"><div class="code">C · COURAGE</div><div class="name">安全区突破力</div><div class="desc">敢不敢走出新手村，进未知副本，承受不确定性？</div></div>
+      <div class="dim"><div class="code">D · HP</div><div class="name">血条管理力</div><div class="desc">会不会拒绝、会不会回血、知不知道什么时候该下线？</div></div>
+      <div class="dim"><div class="code">E · SKILL</div><div class="name">技能重构力</div><div class="desc">技能点加在别人期望上，还是自己真正想做的事上？</div></div>
+    </div>
+  </section>
+
+  <!-- ===== 八种原型 ===== -->
+  <section class="section">
+    <div class="sec-head"><span class="sec-no">03</span><span class="sec-title">八种 NPC 原型</span><span class="sec-sub">8 ARCHETYPES</span></div>
+    <p class="lead">五大维度组合出八种典型困局。你大概率能在其中一眼认出自己（或某个熟人）。</p>
+    <div class="arch-grid">
+      <div class="arch"><div class="top"><span class="name">主线任务搬运工</span><span class="code">A</span></div><div class="desc">按部就班走了三十年，从没打开过自己的任务日志看看到底要什么。</div><div class="tag">核心卡关：任务自主性</div></div>
+      <div class="arch"><div class="top"><span class="name">装备收集型NPC</span><span class="code">B</span></div><div class="desc">装备=身份。没有名牌傍身，就不确定「我是谁」。</div><div class="tag">核心卡关：身份解绑度</div></div>
+      <div class="arch"><div class="top"><span class="name">新手村钉子户</span><span class="code">C</span></div><div class="desc">用「稳定」给自己上麻药，想走出安全区，腿先软了。</div><div class="tag">核心卡关：安全区突破力</div></div>
+      <div class="arch"><div class="top"><span class="name">空血条幸存者</span><span class="code">D</span></div><div class="desc">讨好型+内耗型，血条常年飘红，却总说「我没事」。</div><div class="tag">核心卡关：血条管理力</div></div>
+      <div class="arch"><div class="top"><span class="name">技能点错者</span><span class="code">E</span></div><div class="desc">技能点全加在别人期望上，自己的天赋从未点亮。</div><div class="tag">核心卡关：技能重构力</div></div>
+      <div class="arch"><div class="top"><span class="name">社交副本囚徒</span><span class="code">BC</span></div><div class="desc">被他人评价锁死，怕被议论，不敢活得不一样。</div><div class="tag">核心卡关：身份解绑 × 安全突破</div></div>
+      <div class="arch"><div class="top"><span class="name">氪金路人</span><span class="code">BE</span></div><div class="desc">买课囤工具跟风氪金，以为花钱＝升级，账单先爆了。</div><div class="tag">核心卡关：身份解绑 × 技能重构</div></div>
+      <div class="arch"><div class="top"><span class="name">循环刷怪工</span><span class="code">AD</span></div><div class="desc">同一副本刷十年，同一错误犯十年，路径被循环焊死。</div><div class="tag">核心卡关：任务自主 × 血条管理</div></div>
+    </div>
+  </section>
+
+  <!-- ===== 体验流程 ===== -->
+  <section class="section">
+    <div class="sec-head"><span class="sec-no">04</span><span class="sec-title">你将会经历</span><span class="sec-sub">FLOW</span></div>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div class="body"><div class="h">凭第一直觉答题</div><div class="t">36 道贴近生活的场景题，约 5 分钟。请凭直觉作答，不要思考「正确答案」。</div></div></div>
+      <div class="step"><span class="num">2</span><div class="body"><div class="h">生成五维属性面板</div><div class="t">系统逐维打分，画出你的能力雷达与短板条。</div></div></div>
+      <div class="step"><span class="num">3</span><div class="body"><div class="h">匹配专属 NPC 原型</div><div class="t">命中你最像的那一种，并揭示你的「隐藏优势」——被低估的真实天赋。</div></div></div>
+      <div class="step"><span class="num">4</span><div class="body"><div class="h">领取觉醒路线</div><div class="t">症状实录 → 新手任务 → BOSS 战 → 终章宣言，一份能立刻动手的清单。</div></div></div>
+    </div>
+  </section>
+
+  <!-- ===== 为什么 ===== -->
+  <section class="section">
+    <div class="sec-head"><span class="sec-no">05</span><span class="sec-title">为什么值得做</span><span class="sec-sub">WHY</span></div>
+    <div class="feat-row">
+      <div class="feat"><div class="h">没有对错</div><div class="t">本测试不评判你，只有你和自己的距离。越诚实，结果越准。</div></div>
+      <div class="feat"><div class="h">心理学撑腰</div><div class="t">每道题都挂着一个真实概念：脚本化人生、延伸自我、损失厌恶、心流、习得性无助……</div></div>
+      <div class="feat"><div class="h">报告即行动</div><div class="t">不是让你emo的判决书，而是能当晚就开始执行的新手任务链。</div></div>
+    </div>
+  </section>
+
+  <!-- ===== FINAL CTA ===== -->
+  <section class="section" style="border-top:none;padding-bottom:10px;">
+    <div class="cta-box">
+      <div class="ft">READY?</div>
+      <div class="fh">你是 NPC，还是玩家？</div>
+      <p class="fp">5 分钟，看清自己被什么困住，也看清自己藏着什么牌。<br>本测试为娱乐与自我觉察工具，不构成任何人生指令。</p>
+      <div class="cta-row">
+        <a class="btn" href="index.html">▶ 进入诊断</a>
+        <a class="btn gold" href="poster.png">下载分享长图</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    EARTH ONLINE v2.0 · NPC DIAGNOSTIC SYSTEM<br>
+    产品介绍页 · <a href="index.html" style="color:var(--dim);text-decoration:none;">进入测试 ↗</a>
+  </footer>
+
+</div>
+</body>
+</html>
